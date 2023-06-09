@@ -1,0 +1,451 @@
+openapi: 3.1.0
+info:
+  title: Boss of Brevity
+  version: 1.0.0
+  summary: Meet BOB, the boss of brevity, the sultan of shortness, making your links famous for being short and sweet.
+  description: This is the BOB API specification. It is used to generate the API documentation and to validate the API requests and responses.
+  contact:
+    name: BOB
+    url: https://github.com/ukane-philemon
+    email: ukanephilemon@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://{host}:{port}/{ver}/
+    description: Local development server
+    variables:
+      host:
+        default: localhost
+      port:
+        default: "8080"
+paths:
+  /{shortUrl}:
+    get:
+      summary: Redirect to the original URL.
+      description: Redirect to the original URL.
+      operationId: redirect
+      parameters:
+        - name: shortUrl
+          in: path
+          description: Short URL without the domain name. e.g. `abc123`.
+          required: true
+          schema:
+            type: string
+      tags:
+        - Links
+      responses:
+        "302":
+          description: Redirect to the original URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "400":
+          description: Invalid short URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+  /create-account:
+    post:
+      summary: Create a new user account.
+      description: Create a new account with the given username, email and password.
+      operationId: createAccount
+      tags:
+        - Accounts
+      requestBody:
+        description: User account to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/requestBodies/createAccount"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+  /login:
+    post:
+      summary: Login to an existing user account
+      description: Login to an existing account with the given username and password.
+      operationId: login
+      tags:
+        - Accounts
+      requestBody:
+        description: User account to be logged in
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/requestBodies/login"
+      responses:
+        "200":
+          description: Account logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+  /logout:
+    post:
+      summary: Logout from an existing user account
+      description: Logout from an existing account with the given username and password.
+      operationId: logout
+      parameters:
+        - name: Authorization
+          in: header
+          description: Authorization token
+          required: true
+          schema:
+            type: string
+      tags:
+        - Accounts
+      responses:
+        "200":
+          description: Account logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /username-exists:
+    post:
+      summary: Check if a username exists
+      description: Check if a username exists
+      operationId: usernameExists
+      parameters:
+        - name: username
+          in: query
+          description: Username to be checked
+          required: true
+          schema:
+            type: string
+      tags:
+        - Accounts
+      responses:
+        "200":
+          description: Username exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "400":
+          description: Invalid account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+  /email-exists:
+    post:
+      summary: Check if an email exists
+      description: Check if an email exists
+      operationId: emailExists
+      parameters:
+        - name: email
+          in: query
+          description: Email to be checked
+          required: true
+          schema:
+            type: string
+      tags:
+        - Accounts
+      responses:
+        "200":
+          description: Email exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "400":
+          description: Invalid account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+  /links:
+    post:
+      summary: Create a new short link
+      description: Create a new short link with the given URL.
+      operationId: createLink
+      tags:
+        - Links
+      requestBody:
+        description: Link to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/requestBodies/createLink"
+      responses:
+        "201":
+          description: Link created. This response will contain only the short URL if the user is not logged in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/ShortURLInfo"
+        "400":
+          description: Invalid link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+      security:
+        - Authorization: []
+        - APIKey: []
+    get:
+      summary: Get all links
+      description: Get all links created by the user. User must be logged in or provide an API key.
+      operationId: getLinks
+      tags:
+        - Links
+      responses:
+        "200":
+          description: Links found
+          content:
+            application/json:
+              schema:
+                type: array
+                $ref: "#/components/responses/ShortURLInfo"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+      security:
+        - Authorization: []
+        - APIKey: []
+  /links/{shortUrl}:
+    get:
+      summary: Get a link
+      description: Get the complete information for a short URL.
+      operationId: getLink
+      tags:
+        - Links
+      parameters:
+        - name: shortUrl
+          in: path
+          description: Short URL to be retrieved without the domain name (e.g. "abc123").
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Link found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortURLInfo"
+        "404":
+          description: Link not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+      security:
+        - Authorization: []
+        - APIKey: []
+  /links/{shortUrl}/qr:
+    get:
+      summary: Get a QR code for a link
+      description: Get a QR code for a short link.
+      operationId: getQRCode
+      tags:
+        - Links
+      parameters:
+        - name: shortUrl
+          in: path
+          description: Short URL to be retrieved without the domain. For example, if the short URL is https://example.com/abc123, the value of this parameter should be abc123.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: QR code generated successfully
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Link not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/APIResponse"
+      security:
+        - Authorization: []
+        - APIKey: []
+components:
+  schemas:
+    CreateAccountRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Must be at least 3 characters long. The /username-exists endpoint can be used to check if a username exists.
+        email:
+          type: string
+          description: Must be a valid email address. The /email-exists endpoint can be used to check if an email exists.
+        password:
+          type: string
+          description: Must be at least 8 characters long and must be base64 encoded.
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          description: User's username
+        email:
+          type: string
+          description: User's email address
+        totalLinks:
+          type: integer
+          description: Number of links created by the user
+        createdAt:
+          type: string
+          description: User's creation date.
+    ShortURLInfo:
+      type: object
+      properties:
+        ownerID:
+          type: string
+          description: Link's owner ID
+        shortUrl:
+          type: string
+          description: Short URL
+        originalUrl:
+          type: string
+          description: Original URL
+        clicks:
+          type: integer
+          description: Number of clicks on the link
+        createdAt:
+          type: string
+          description: Link's creation date.
+  requestBodies:
+    createAccount:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateAccountRequest"
+    login:
+      content:
+        application/json:
+          schema:
+            properties:
+              email:
+                type: string
+                description: Must be a valid email address.
+              password:
+                type: string
+                description: Must be at least 8 characters long and must be base64 encoded.
+            required:
+              - username
+              - password
+    createLink:
+      content:
+        application/json:
+          schema:
+            properties:
+              url:
+                type: string
+                description: Must be a valid URL.
+            required:
+              - url
+  responses:
+    APIResponse:
+      description: API response. This is the default response for all endpoints.
+      content:
+        application/json:
+          schema:
+            properties:
+              ok:
+                type: boolean
+                description: True if the request was successful, false otherwise.
+              message:
+                type: string
+                description: Message describing the result of the request.
+    ShortURLInfo:
+      description: Short link response. If a logged in user creates a link, the link will be associated with the user and more information will be returned. Otherwise, only the short URL will be returned.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ShortURLInfo"
+security:
+  - Authorization: []
+  - APIKey: []
