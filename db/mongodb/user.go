@@ -1,28 +1,45 @@
 package mongodb
 
-import "github.com/ukane-philemon/bob/db"
+import (
+	"fmt"
+	"time"
 
-// UserNameExists checks if a username exists in the database. Implements
-// db.DataStore.
-func (m *MongoDB) UserNameExists(username string) (bool, error) {
-	return false, nil
-}
+	"github.com/ukane-philemon/bob/db"
+)
 
-// EmailExits checks if an email exists in the database. Implements
+// UsernameExists checks if a username exists in the database. Implements
 // db.DataStore.
-func (m *MongoDB) EmailExits(email string) (bool, error) {
+func (m *MongoDB) UsernameExists(username string) (bool, error) {
+	fmt.Println("UsernameExists", username)
 	return false, nil
 }
 
 // CreateUser adds a new user to the database. The username must be unique and
 // email must be unique. The password is hashed before being stored. Implements
 // db.DataStore.
-func (m *MongoDB) CreateUser(username, email string, password []byte) (*db.User, error) {
-	return nil, nil
+func (m *MongoDB) CreateUser(username, email string, password []byte) error {
+	fmt.Println("CreateUser", username, email, password)
+	return nil
+}
+
+// RetrieveUserInfo fetches information about a user using the email. Implements
+// db.DataStore.
+func (m *MongoDB) RetrieveUserInfo(email string) (*db.User, error) {
+	return &db.User{
+		Username:   "random",
+		Email:      email,
+		TotalLinks: 2,
+		CreatedAt:  time.Now().String(),
+	}, nil
 }
 
 // LoginUser logs a user in and returns a nil error if the user exists and the
 // password is correct. Implements db.DataStore.
 func (m *MongoDB) LoginUser(email string, password []byte) (*db.User, error) {
-	return nil, nil
+	return &db.User{
+		Username:   "random",
+		Email:      email,
+		TotalLinks: 2,
+		CreatedAt:  time.Now().String(),
+	}, nil
 }

@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 
-	"github.com/ukane-philemon/bob/api"
 	"github.com/ukane-philemon/bob/db/mongodb"
+	"github.com/ukane-philemon/bob/webserver"
 )
 
 func main() {
@@ -45,37 +44,29 @@ func main() {
 		exitWithErr(err)
 	}
 
+	if cfg.MongoDBConnectionURL == "" && !cfg.DevMode {
+		exitWithErr(fmt.Errorf("MongoDB connection URL is required"))
+	}
+
 	db, err := mongodb.Connect(ctx, cfg.MongoDBConnectionURL)
 	if err != nil {
 		exitWithErr(err)
 	}
 	defer db.Close()
 
-	r, err := api.NewRouter(ctx, db)
+	r, err := webserver.New(ctx, cfg.WebServerCfg, db)
 	if err != nil {
 		db.Close()
 		exitWithErr(err)
 	}
 
-	var serverError error
 	go func() {
-		listenAddr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
-		serverError = r.Listen(listenAddr)
-		if serverError == http.ErrServerClosed {
-			serverError = nil // it's not an error if the server dies because of a graceful shutdown
-		}
-
-		if serverError != nil {
-			cancel()
-			fmt.Printf("HTTP server error: %v\n", serverError)
+		<-ctx.Done()
+		fmt.Println("Shutting down web server...")
+		if err := r.Stop(); err != nil {
+			fmt.Printf("HTTP server Shutdown error: %v\n", err)
 		}
 	}()
 
-	// Start graceful shutdown of the server on shutdown signal.
-	<-ctx.Done()
-
-	fmt.Println("Gracefully shutting down web server...")
-	if err := r.Shutdown(); err != nil {
-		fmt.Printf("HTTP server Shutdown error: %v\n", err)
-	}
+	r.Start()
 }

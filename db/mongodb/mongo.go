@@ -18,7 +18,7 @@ var _ db.DataStore = (*MongoDB)(nil)
 
 // Connect connects to the database and returns a new *MongoDB instance.
 func Connect(ctx context.Context, connectionUrl string) (*MongoDB, error) {
-	return nil, nil
+	return &MongoDB{ctx: ctx}, nil
 }
 
 // Close ends the connection to the database. Implements db.DataStore.
