@@ -42,13 +42,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
   /api/user:
     post:
       summary: Create a new user account.
@@ -62,26 +62,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/requestBodies/createAccount"
+              $ref: "#/components/schemas/createAccount"
       responses:
         "200":
           description: Account created
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "400":
           description: Invalid account
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
     get:
       summary: Get the current user account.
       description: Get the current user account.
@@ -101,19 +101,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/userInfo"
+                $ref: "#/components/schemas/userInfo"
         "400":
           description: Invalid account
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
   /api/login:
     post:
       summary: Login to an existing user account
@@ -127,14 +127,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/requestBodies/login"
+              $ref: "#/components/schemas/login"
       responses:
         "200":
           description: Account logged in
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/userInfo"
+                $ref: "#/components/schemas/userInfo"
                 properties:
                   authToken:
                     type: string
@@ -144,13 +144,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
   /api/username-exists:
     get:
       summary: Check if a username exists
@@ -171,19 +171,23 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/usernameExists"
+                $ref: "#/components/schemas/APIResponse"
+                properties:
+                  exists:
+                    type: boolean
+                    description: True if the username exists, false otherwise.
         "400":
           description: Invalid account
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
   /api/url:
     post:
       summary: Create a new short link
@@ -197,29 +201,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/requestBodies/createLink"
+              $ref: "#/components/schemas/createLink"
       responses:
         "200":
           description: Link created.
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/shortURLInfo"
+                additionalProperties:
+                  $ref: "#/components/schemas/APIResponse"
+                properties:
+                  data: 
+                    $ref: "#/components/schemas/shortURLInfo"
         "400":
           description: Invalid link
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
       security:
         - Authorization: []
-        - APIKey: []
     get:
       summary: Get all links
       description: Get all links created by the user. User must be logged in or provide an API key.
@@ -231,18 +238,19 @@ paths:
           description: Links found
           content:
             application/json:
-              $ref: "#/components/responses/APIResponse"
               schema:
+                additionalProperties:
+                  $ref: "#/components/schemas/APIResponse"
                 properties:
                   data:
                     type: array
-                    $ref: "#/components/responses/shortURLInfo"
+                    $ref: "#/components/schemas/shortURLInfo"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
       security:
         - Authorization: []
   /api/url/{shortUrl}:
@@ -265,22 +273,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/shortURLInfo"
+                $ref: "#/components/schemas/APIResponse"
+                properties:
+                 data:
+                  $ref: "#/components/schemas/shortURLInfo"
         "404":
           description: Link not found
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
       security:
         - Authorization: []
-        - APIKey: []
   /api/url/{shortUrl}/qr:
     get:
       summary: Get a QR code for a link
@@ -308,13 +318,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/APIResponse"
+                $ref: "#/components/schemas/APIResponse"
       security:
         - Authorization: []
 components:
@@ -337,116 +347,76 @@ components:
         createdAt:
           type: string
           description: Link's creation date.
-  requestBodies:
     createAccount:
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              username:
-                type: string
-                description: Must be at least 3 characters long. The /api/username-exists endpoint can be used to check if a username exists.
-              email:
-                type: string
-                description: Must be a valid email address.
-              password:
-                type: string
-                format: byte
-                description: Must be at least 8 characters long.
-    login:
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              email:
-                type: string
-                description: Must be a valid email address.
-              password:
-                type: string
-                format: binary
-                description: User password.
-            required:
-              - email
-              - password
+      type: object
+      properties:
+        username:
+          type: string
+          description: Must be at least 3 characters long. The /api/username-exists endpoint can be used to check if a username exists.
+        email:
+          type: string
+          description: Must be a valid email address.
+        password:
+         type: string
+         format: byte
+         description: Must be at least 8 characters long.
     createLink:
-      content:
-        application/json:
-          schema:
-            properties:
-              url:
-                type: string
-                description: Must be a valid URL.
-            required:
-              - url
-  responses:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Must be a valid URL.
+      required:
+        - url
+    login:
+      type: object
+      properties:
+          email:
+            type: string
+            description: Must be a valid email address.
+          password:
+            type: string
+            format: binary
+            description: User password.
+      required:
+          - email
+          - password
     APIResponse:
-      description: API response. This is the default response for all endpoints.
-      content:
-        application/json:
-          schema:
-            properties:
-              ok:
-                type: boolean
-                description: True if the request was successful, false otherwise.
-              code:
-                type: integer
-                description: The HTTP response code for this request.
-              message:
-                type: string
-                description: Message describing the result of the request.
-    shortURLInfo:
-      description: Short URL Info. If a logged in user creates a link, the link will be associated with the user and more information will be returned. Otherwise, only the short URL will be returned.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/responses/APIResponse"
-            properties:
-              data:
-                $ref: "#/components/schemas/shortURLInfo"
-    usernameExists:
-      description: Username exists response
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/responses/APIResponse"
-            properties:
-              exits:
-                type: boolean
-                description: True if the username exists, false otherwise.
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: True if the request was successful, false otherwise.
+        code:
+          type: integer
+          description: The HTTP response code for this request.
+        message:
+          type: string
+          description: Message describing the result of the request.  
     userInfo:
-      description: User info response
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/responses/APIResponse"
-            properties:
-              data:
-                type: object
-                properties:
-                  username:
-                    type: string
-                    description: User's username
-                  email:
-                    type: string
-                    description: User's email
-                  totalLinks:
-                    type: integer
-                    description: Total short URLs created by the user
-                  createdAt:
-                    type: string
-                    description: User's creation date
-    getShortURLs:
-      description: Get short URLs response
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/responses/APIResponse"
-            properties:
-              data:
-                type: array
-                items:
-                  $ref: "#/components/schemas/shortURLInfo"
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/APIResponse"
+      properties:
+        data:
+          type: object
+          properties:
+            username:
+              type: string
+              description: User's username
+            email:
+              type: string
+              description: User's email
+            totalLinks:
+              type: integer
+              description: Total short URLs created by the user
+            createdAt:
+              type: string
+              description: User's creation date
+  securitySchemes:
+    Authorization:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT"
 security:
   - Authorization: []
