@@ -77,7 +77,6 @@ func (jwtAuth *jwtAuthenticator) validateAuthToken(token string) (*jwt.Registere
 	jwtClaims := new(jwt.RegisteredClaims)
 	err := jwt.ParseClaims([]byte(token), jwtAuth.verifier, jwtClaims)
 	if err != nil || !isValidJWTClaims(jwtClaims) {
-		log.Println("jwtAuthenticator.validateAuthToken error: ", err, isValidJWTClaims(jwtClaims), token)
 		return nil, false
 	}
 
@@ -86,5 +85,5 @@ func (jwtAuth *jwtAuthenticator) validateAuthToken(token string) (*jwt.Registere
 
 // isValidJWTClaims checks if the given JWT claims are valid.
 func isValidJWTClaims(jwtClaims *jwt.RegisteredClaims) bool {
-	return jwtClaims.IsIssuer(jwtIssuer) && jwtClaims.IsValidAt(time.Now()) && jwtClaims.IsForAudience(jwtAudienceUser) // TODO: If we add support for admin users , we should check for that and ensure that user does not use an admin token and vice versa.
+	return jwtClaims.IsIssuer(jwtIssuer) && jwtClaims.IsValidAt(time.Now()) && jwtClaims.IsForAudience(jwtAudienceUser)
 }

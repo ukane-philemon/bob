@@ -64,7 +64,7 @@ func (r *WebServer) handleCreateAccount(c *fiber.Ctx) error {
 		return errInternal(err)
 	}
 
-	resp := newAPIResponse(true, codeOk, "Account created.")
+	resp := newAPIResponse(true, codeOk, "Account Created.")
 
 	return c.Status(resp.Code).JSON(resp)
 }
@@ -120,8 +120,8 @@ func (r *WebServer) handleLogin(c *fiber.Ctx) error {
 		return errInternal(err)
 	}
 
-	userInfo := &userInfoResponse{
-		APIResponse: newAPIResponse(true, codeOk, "User Information Retrieved."),
+	userInfo := userInfoResponse{
+		APIResponse: newAPIResponse(true, codeOk, "Login Successful."),
 		Data:        user,
 	}
 

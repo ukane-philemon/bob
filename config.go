@@ -4,13 +4,14 @@ import (
 	"os"
 
 	"github.com/jessevdk/go-flags"
+	"github.com/ukane-philemon/bob/db/mongodb"
 	"github.com/ukane-philemon/bob/webserver"
 )
 
 type Config struct {
-	WebServerCfg         webserver.Config `group:"Web server" namespace:"webserver" env-namespace:"WEBSERVER"`
-	MongoDBConnectionURL string           `long:"mongodbURL" env:"MONGODB_CONNECTION_URL" description:"MongoDB connection URL"` // TODO: add required:"true"
-	DevMode              bool             `long:"dev" env:"DEV_MODE" description:"Enable development mode"`
+	WebServerCfg webserver.Config `group:"Web server" namespace:"webserver"`
+	MongoDBCfg   mongodb.Config   `group:"MongoDB" namespace:"mongodb"`
+	DevMode      bool             `long:"dev" env:"DEV_MODE" description:"Enable development mode"`
 }
 
 // parseCLIConfig parses the command-line arguments into the provided struct

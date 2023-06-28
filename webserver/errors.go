@@ -2,7 +2,6 @@ package webserver
 
 import (
 	"errors"
-	"net/http"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -18,7 +17,7 @@ func errorHandler(c *fiber.Ctx, err error) error {
 		return c.Status(e.Code).JSON(err)
 	default:
 		c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
-		return c.Status(http.StatusInternalServerError).SendString(err.Error())
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 }
 

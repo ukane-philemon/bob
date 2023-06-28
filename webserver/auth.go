@@ -20,14 +20,14 @@ func (s *WebServer) requireUserLogin(c *fiber.Ctx) error {
 	}
 
 	// Get the auth token and validated it.
-	token, ok := s.authenticator.validateAuthToken(authTokenParts[1])
+	token, ok := s.authenticator.validateAuthToken(strings.TrimSpace(authTokenParts[1]))
 	if !ok {
 		return errUnauthorized("Invalid authorization token")
 	}
 
 	// Set the user email in the context.
 	c.Context().SetUserValue(ctxID, token.ID)
-	return nil
+	return c.Next()
 }
 
 // validateIfLoggedIn is a middleware handle that validates a user token, if

@@ -14,6 +14,9 @@ import (
 	"github.com/ukane-philemon/bob/db"
 )
 
+// AppName is the name of the application.
+const AppName = "B.O.B"
+
 var log = glog.New(os.Stdout, "[webserver] ", glog.LstdFlags|glog.Lshortfile)
 
 // Config is the configuration for the web server.
@@ -39,7 +42,7 @@ func New(ctx context.Context, cfg Config, db db.DataStore) (*WebServer, error) {
 	}
 
 	a := fiber.New(fiber.Config{
-		AppName:          "B.O.B",
+		AppName:          AppName,
 		Concurrency:      1000000,
 		ErrorHandler:     errorHandler,
 		ReadTimeout:      5 * time.Second,  // slow requests should not hold connections opened
@@ -81,7 +84,7 @@ func registerRoutes(s *WebServer) {
 	// User Endpoints
 	api := s.Group("/api")
 	api.Post("/login", s.handleLogin)
-	api.Get("/username-exits", s.handleUsernameExists)
+	api.Get("/username-exists", s.handleUsernameExists)
 	api.Post("/user", s.handleCreateAccount)
 	api.Use(s.requireUserLogin).Get("/user", s.handleGetUser)
 

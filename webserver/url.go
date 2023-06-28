@@ -27,12 +27,18 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 	defer fiber.ReleaseAgent(a)
 
 	req := a.Request()
+	req.Header.SetMethod(fiber.MethodGet)
 	req.SetRequestURI(url.String())
+
 	resp := fiber.AcquireResponse()
 	defer fiber.ReleaseResponse(resp)
 
+	if err = a.Parse(); err != nil {
+		return errInternal(err)
+	}
+
 	// Ensure the url is reachable. We allow a maximum of 2 redirects.
-	if err := a.DoRedirects(req, fiber.AcquireResponse(), 2); err != nil {
+	if err := a.DoRedirects(req, resp, 2); err != nil {
 		return errBadRequest(err.Error())
 	}
 

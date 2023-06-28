@@ -3,6 +3,8 @@ package db
 const (
 	// URLLength is the length of the shortened URL.
 	URLLength = 6
+	// MaxGuestURLs is the maximum number of URLs a guest can shorten.
+	MaxGuestURLs = 5
 )
 
 // DataStore is the interface that wraps the basic database operations.
@@ -18,9 +20,9 @@ type DataStore interface {
 	// password is correct.
 	LoginUser(email string, password []byte) (*User, error)
 	// SaveUserURL adds a new URL to the database and returns the shortened URL.
-	SaveUserURL(email string, url string) (*ShortURLInfo, error)
+	SaveUserURL(email string, longURL string) (*ShortURLInfo, error)
 	// SaveGuestURL is like SaveUserURL but only for users without an account.
-	SaveGuestURL(id string, url string) (*ShortURLInfo, error)
+	SaveGuestURL(id string, longURL string) (*ShortURLInfo, error)
 	// UpdateShortURL updates the number of clicks for the specified short URL.
 	UpdateShortURL(short string) error
 	// RetrieveURLInfo fetches information about a short URL using the shortened
@@ -34,17 +36,17 @@ type DataStore interface {
 
 // User represents a user in the database.
 type User struct {
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	TotalLinks int    `json:"totalLinks"`
-	CreatedAt  string `json:"createdAt"`
+	Username   string `json:"username" bson:"username"`
+	Email      string `json:"email" bson:"email"`
+	TotalLinks int    `json:"totalLinks" bson:"total_links"`
+	CreatedAt  string `json:"createdAt" bson:"created_at"`
 }
 
 // ShortURLInfo represents a short URL in the database.
 type ShortURLInfo struct {
-	OwnerID     string `json:"ownerID"`
-	ShortURL    string `json:"shortUrl"`
-	OriginalURL string `json:"originalUrl"`
-	Clicks      int32  `json:"clicks"`
-	CreatedAt   string `json:"createdAt"`
+	OwnerID     string `json:"ownerID" bson:"owner_id"`
+	ShortURL    string `json:"shortUrl" bson:"short_url"`
+	OriginalURL string `json:"originalUrl" bson:"original_url"`
+	Clicks      int32  `json:"clicks" bson:"clicks"`
+	CreatedAt   string `json:"createdAt" bson:"created_at"`
 }

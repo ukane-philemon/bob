@@ -81,7 +81,7 @@ type userInfoResponse struct {
 }
 
 type loginResponse struct {
-	*userInfoResponse
+	userInfoResponse
 	AuthToken string `json:"authToken"`
 }
 
