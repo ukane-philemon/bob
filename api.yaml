@@ -12,6 +12,8 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
+  - url: https://bob-rj0z.onrender.com
+    description: Production server
   - url: http://{host}:{port}
     description: Local development server
     variables:
