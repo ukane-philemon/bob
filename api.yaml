@@ -227,6 +227,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIResponse"
+      security:
+        - Authorization: []
     get:
       summary: Get all links
       description: Get all links created by the user. User must be logged in or provide an API key.
