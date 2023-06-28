@@ -16,4 +16,4 @@ ENV PORT=8080
 
 EXPOSE ${PORT}
 
-CMD ["bob"]
+CMD ["/usr/local/bin/bob"]
