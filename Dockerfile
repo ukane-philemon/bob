@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN go build -o bob
+RUN go build -o /usr/local/bin/bob
 
 ENV DEV_MODE=true
 ENV MONGODB_DB_NAME=bob
