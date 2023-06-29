@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-var dummyUserPassword = []byte("password")
+var dummyUserPassword = "password"
 
 func TestWebServer_handleUsernameExists(t *testing.T) {
 	s := newTServer(t)
@@ -97,7 +97,7 @@ func TestWebServer_handleCreateAccount(t *testing.T) {
 		req: createAccountRequest{
 			Username: "fibrealz",
 			Email:    "testmail@example.com",
-			Password: []byte{45, 89, 98},
+			Password: "asdf",
 		},
 		messagePrefix: "password must be a minimum of",
 	}, {
@@ -244,7 +244,7 @@ func TestWebServer_handleLogin(t *testing.T) {
 		name: "incorrect password",
 		req: loginRequest{
 			Email:    "test@email.com",
-			Password: []byte("incorrect password"),
+			Password: "incorrect password",
 		},
 		messagePrefix: "incorrect password",
 	}, {

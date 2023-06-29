@@ -24,3 +24,15 @@ func randomString(len int) (string, error) {
 
 	return hex.EncodeToString(b), nil
 }
+
+func mapKey(keys ...string) string {
+	var mapKey string
+	for _, key := range keys {
+		if mapKey == "" {
+			mapKey = key
+		} else {
+			mapKey += "." + key
+		}
+	}
+	return mapKey
+}

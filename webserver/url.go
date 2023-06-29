@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	qrcode "github.com/skip2/go-qrcode"
@@ -18,9 +19,28 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 		return errBadRequest("invalid request body")
 	}
 
-	url, err := url.ParseRequestURI(form.URL)
-	if err != nil || url.Scheme != "https" || url.Host == "" || url.Path == "" {
+	longURL, err := url.ParseRequestURI(form.LongURL)
+	if err != nil || longURL.Scheme != "https" || longURL.Host == "" {
 		return errBadRequest("invalid URL, provide an absolute URL with a scheme (only https is allowed) and a host (e.g. https://example.com/path/to/resource))")
+	}
+
+	var userID string
+	var ok bool
+	userID, ok = c.Context().UserValue(ctxID).(string)
+	if !ok {
+		if form.CustomShortURL != "" {
+			return errBadRequest("Create an account to use custom short URL feature")
+		}
+
+		userID = c.IP()
+	}
+
+	if userID == "" {
+		return errBadRequest("invalid request")
+	}
+
+	if form.CustomShortURL != "" && !customURLRegEx.MatchString(form.CustomShortURL) {
+		return errBadRequest("invalid custom short url")
 	}
 
 	a := fiber.AcquireAgent()
@@ -28,7 +48,7 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 
 	req := a.Request()
 	req.Header.SetMethod(fiber.MethodGet)
-	req.SetRequestURI(url.String())
+	req.SetRequestURI(longURL.String())
 
 	resp := fiber.AcquireResponse()
 	defer fiber.ReleaseResponse(resp)
@@ -47,16 +67,10 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 	}
 
 	apiResp := &shortURLResponse{
-		APIResponse: newAPIResponse(true, codeOk, "URL created successfully"),
+		APIResponse: newAPIResponse(true, codeOk, "Request was successful"),
 	}
 
-	if email, ok := c.Context().UserValue(ctxID).(string); ok {
-		apiResp.Data, err = s.db.SaveUserURL(email, form.URL)
-	} else if id := c.IP(); id != "" {
-		apiResp.Data, err = s.db.SaveGuestURL(id, form.URL)
-	} else {
-		return errBadRequest("invalid request")
-	}
+	apiResp.Data, err = s.db.CreateNewShortURL(userID, form.LongURL, form.CustomShortURL, !isValidEmail(userID))
 	if err != nil {
 		return translateDBError(err)
 	}
@@ -68,7 +82,7 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 // URLs for a validated user.
 func (s *WebServer) handleGetAllURL(c *fiber.Ctx) error {
 	email, ok := c.Context().UserValue(ctxID).(string)
-	if !ok { // not logged in but we should never reach here
+	if !ok {
 		return errUnauthorized("you are not unauthorized to access this resource")
 	}
 
@@ -88,12 +102,12 @@ func (s *WebServer) handleGetAllURL(c *fiber.Ctx) error {
 // handleGetURL handles the "GET /url/{shortUrl} "endpoint and returns the full
 // information about a short URL for a validated user.
 func (s *WebServer) handleGetURL(c *fiber.Ctx) error {
-	if _, ok := c.Context().UserValue(ctxID).(string); !ok { // not logged in but we should never reach here
+	if _, ok := c.Context().UserValue(ctxID).(string); !ok {
 		return errUnauthorized("you are not unauthorized to access this resource")
 	}
 
 	shortUrl := c.Params("shortUrl")
-	if shortUrl == "" || len(shortUrl) > db.URLLength+10 /* give a benefit of doubt */ {
+	if shortUrl == "" {
 		return errBadRequest("invalid short URL")
 	}
 
@@ -113,12 +127,12 @@ func (s *WebServer) handleGetURL(c *fiber.Ctx) error {
 // handleCreateURLQR handles the "GET /api/url/{shortUrl}/qr" endpoint and returns
 // a QR code for the short URL.
 func (s *WebServer) handleCreateURLQR(c *fiber.Ctx) error {
-	if _, ok := c.Context().UserValue(ctxID).(string); !ok { // not logged in but we should never reach here
+	if _, ok := c.Context().UserValue(ctxID).(string); !ok {
 		return errUnauthorized("you are not unauthorized to access this resource")
 	}
 
 	shortUrl := c.Params("shortUrl")
-	if shortUrl == "" || len(shortUrl) > db.URLLength+10 /* give a benefit of doubt */ {
+	if shortUrl == "" {
 		return errBadRequest("invalid short URL")
 	}
 
@@ -143,7 +157,7 @@ func (s *WebServer) handleCreateURLQR(c *fiber.Ctx) error {
 // the original URL.
 func (s *WebServer) handleShortUrlRedirect(c *fiber.Ctx) error {
 	shortUrl := c.Params("shortUrl")
-	if shortUrl == "" || len(shortUrl) > db.URLLength+10 /* give a benefit of doubt */ {
+	if shortUrl == "" {
 		return errBadRequest("invalid short URL")
 	}
 
@@ -152,8 +166,90 @@ func (s *WebServer) handleShortUrlRedirect(c *fiber.Ctx) error {
 		return translateDBError(err)
 	}
 
-	// Update the short URL stats in the background. TODO: Log the error if any.
-	defer s.db.UpdateShortURL(shortUrl)
+	if urlInfo.Disabled {
+		errBadRequest("Link has been disabled")
+	}
+
+	userAgentBytes := c.Context().UserAgent()
+	ua := parseUserAgent(string(userAgentBytes))
+	// Update the short URL stats in the background.
+	click := &db.ShortURLClick{
+		IP:         c.IP(),
+		Browser:    ua.Name,
+		Device:     ua.Device,
+		DeviceType: ua.DeviceType(),
+		Timestamp:  time.Now().Unix(),
+	}
+
+	defer func() {
+		err := s.db.UpdateShortURL(shortUrl, "", click)
+		if err != nil {
+			appLog.Printf("\ndb.UpdateShortURL error: %v\n", err)
+		}
+	}()
 
 	return c.Redirect(urlInfo.OriginalURL, codeFound)
+}
+
+// handleURLUpdate handles the "PATCH /api/url?shortUrl="short-url" endpoint and
+// updates the short URL in the query.
+func (s *WebServer) handleURLUpdate(c *fiber.Ctx) error {
+	if _, ok := c.Context().UserValue(ctxID).(string); !ok {
+		return errUnauthorized("you are not unauthorized to access this resource")
+	}
+
+	shortURL := c.Query("shortUrl")
+	if shortURL == "" {
+		return errBadRequest("invalid short URL")
+	}
+
+	var form *updateShortURLRequest
+	if err := c.BodyParser(&form); err != nil {
+		return errBadRequest("invalid request body")
+	}
+
+	if form.Disable == nil && form.LongURL == "" {
+		return errBadRequest("missing required fields")
+	}
+
+	if form.LongURL != "" {
+		if err := s.db.UpdateShortURL(shortURL, form.LongURL, nil); err != nil {
+			return translateDBError(err)
+		}
+	} else if form.Disable != nil {
+		disable := *form.Disable
+		if err := s.db.ToggleShortLinkStatus(shortURL, disable); err != nil {
+			translateDBError(err)
+		}
+	}
+
+	return c.Status(codeOk).JSON(newAPIResponse(true, codeOk, "Short URL has been updated"))
+}
+
+// handleGetShortURLClicks handles the "GET /api/url/clicks?shortUrl="short-url"
+// endpoint and return the full information for a short url clicks.
+func (s *WebServer) handleGetShortURLClicks(c *fiber.Ctx) error {
+	if _, ok := c.Context().UserValue(ctxID).(string); !ok {
+		return errUnauthorized("you are not unauthorized to access this resource")
+	}
+
+	shortURL := c.Query("shortUrl")
+	if shortURL == "" {
+		return errBadRequest("invalid short URL")
+	}
+
+	clicks, err := s.db.RetrieveShortURLClicks(shortURL)
+	if err != nil {
+		return translateDBError(err)
+	}
+
+	resp := &struct {
+		*APIResponse
+		Data []*db.ShortURLClick `json:"data"`
+	}{
+		APIResponse: newAPIResponse(true, codeOk, "Short ULR clicks retrieved"),
+		Data:        clicks,
+	}
+
+	return c.Status(codeOk).JSON(resp)
 }

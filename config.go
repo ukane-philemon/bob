@@ -11,7 +11,7 @@ import (
 type Config struct {
 	WebServerCfg webserver.Config `group:"Web server" namespace:"webserver"`
 	MongoDBCfg   mongodb.Config   `group:"MongoDB" namespace:"mongodb"`
-	DevMode      bool             `long:"dev" env:"DEV_MODE" description:"Enable development mode"`
+	// DevMode      bool             `long:"dev" env:"DEV_MODE" description:"Enable development mode"`
 }
 
 // parseCLIConfig parses the command-line arguments into the provided struct

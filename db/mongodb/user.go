@@ -13,7 +13,7 @@ import (
 // UsernameExists checks if a username exists in the database. Implements
 // db.DataStore.
 func (m *MongoDB) UsernameExists(username string) (bool, error) {
-	res := m.usersCollection().FindOne(m.ctx, bson.M{"username": username})
+	res := m.usersCollection().FindOne(m.ctx, bson.M{"user.username": username})
 	if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
 		return false, res.Err()
 	}
@@ -42,11 +42,10 @@ func (m *MongoDB) CreateUser(username, email string, password []byte) error {
 		User: &db.User{
 			Username:  username,
 			Email:     email,
-			CreatedAt: time.Now().UTC().String(),
+			Timestamp: time.Now().Unix(),
 		},
 		Password: hashedPassword,
 	}
-
 	if _, err := m.usersCollection().InsertOne(m.ctx, userInfo); err != nil {
 		// Check if this is a duplicate error.
 		if mongo.IsDuplicateKeyError(err) {
@@ -66,17 +65,24 @@ func (m *MongoDB) RetrieveUserInfo(email string) (*db.User, error) {
 		return nil, fmt.Errorf("%w: a valid email is required", db.ErrorBadRequest)
 	}
 
-	res := m.usersCollection().FindOne(m.ctx, bson.M{"email": email})
+	res := m.usersCollection().FindOne(m.ctx, bson.M{"user.email": email})
 	if res.Err() != nil {
 		return nil, handleUserError(res.Err())
 	}
 
-	var userInfo *db.User
+	var userInfo *completeUserInfo
 	if err := res.Decode(&userInfo); err != nil {
 		return nil, fmt.Errorf("error decoding user info: %w", err)
 	}
 
-	return userInfo, nil
+	// Set user's total links
+	nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", ownerIDKey): email})
+	if err != nil {
+		return nil, handleURLError(err)
+	}
+	userInfo.TotalLinks = int(nLinks)
+
+	return userInfo.User, nil
 }
 
 // LoginUser logs a user in and returns a nil error if the user exists and the
@@ -90,7 +96,7 @@ func (m *MongoDB) LoginUser(email string, password []byte) (*db.User, error) {
 		return nil, fmt.Errorf("%w: password is required", db.ErrorBadRequest)
 	}
 
-	res := m.usersCollection().FindOne(m.ctx, bson.M{"email": email})
+	res := m.usersCollection().FindOne(m.ctx, bson.M{"user.email": email})
 	if res.Err() != nil {
 		return nil, handleUserError(res.Err())
 	}
@@ -103,6 +109,13 @@ func (m *MongoDB) LoginUser(email string, password []byte) (*db.User, error) {
 	if bcrypt.CompareHashAndPassword(dbUserInfo.Password, password) != nil {
 		return nil, fmt.Errorf("%w: incorrect password", db.ErrorBadRequest)
 	}
+
+	// Set user's total links
+	nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", ownerIDKey): email})
+	if err != nil {
+		return nil, handleURLError(err)
+	}
+	dbUserInfo.TotalLinks = int(nLinks)
 
 	return dbUserInfo.User, nil
 }

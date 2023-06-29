@@ -52,12 +52,13 @@ func (r *WebServer) handleCreateAccount(c *fiber.Ctx) error {
 		return errBadRequest("a valid email is required")
 	}
 
-	if len(form.Password) < 8 {
+	password := passwordBytes(form.Password)
+	if len(password) < 8 {
 		return errBadRequest(fmt.Sprintf("password must be a minimum of %d characters", minPasswordChar))
 	}
-	defer form.Password.Zero()
+	defer password.Zero()
 
-	if err := r.db.CreateUser(form.Username, form.Email, form.Password.Bytes()); err != nil {
+	if err := r.db.CreateUser(form.Username, form.Email, password.Bytes()); err != nil {
 		if errors.Is(err, db.ErrorBadRequest) {
 			return errBadRequest(err.Error())
 		}
@@ -74,7 +75,7 @@ func (r *WebServer) handleCreateAccount(c *fiber.Ctx) error {
 func (r *WebServer) handleGetUser(c *fiber.Ctx) error {
 	email, ok := c.Context().UserValue(ctxID).(string)
 	if !ok {
-		return errInternal(errors.New("Unauthorized user reached an authenticated endpoint"))
+		return errUnauthorized("you are not unauthorized to access this resource")
 	}
 
 	user, err := r.db.RetrieveUserInfo(email)
@@ -102,12 +103,13 @@ func (r *WebServer) handleLogin(c *fiber.Ctx) error {
 		return errBadRequest("a valid email is required to login")
 	}
 
-	if len(form.Password) == 0 {
+	password := passwordBytes(form.Password)
+	if len(password) == 0 {
 		return errBadRequest("password is required")
 	}
-	defer form.Password.Zero()
+	defer password.Zero()
 
-	user, err := r.db.LoginUser(form.Email, form.Password.Bytes())
+	user, err := r.db.LoginUser(form.Email, password.Bytes())
 	if err != nil {
 		if errors.Is(err, db.ErrorBadRequest) {
 			return errBadRequest(err.Error())

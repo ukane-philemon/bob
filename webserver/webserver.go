@@ -17,7 +17,7 @@ import (
 // AppName is the name of the application.
 const AppName = "B.O.B"
 
-var log = glog.New(os.Stdout, "[webserver] ", glog.LstdFlags|glog.Lshortfile)
+var appLog = glog.New(os.Stdout, "[webserver] ", glog.LstdFlags|glog.Lshortfile)
 
 // Config is the configuration for the web server.
 type Config struct {
@@ -81,17 +81,20 @@ func registerRoutes(s *WebServer) {
 	})
 	s.Get("/:shortUrl", s.handleShortUrlRedirect)
 
+	api := s.Group("/api").Use(s.validateIfLoggedIn)
+
 	// User Endpoints
-	api := s.Group("/api")
 	api.Post("/login", s.handleLogin)
 	api.Get("/username-exists", s.handleUsernameExists)
 	api.Post("/user", s.handleCreateAccount)
-	api.Use(s.requireUserLogin).Get("/user", s.handleGetUser)
+	api.Get("/user", s.handleGetUser)
 
 	// Short URL Endpoints
-	api.Use(s.validateIfLoggedIn).Post("/url", s.handleCreateShortURL)
-	api.Use(s.requireUserLogin).Get("/url", s.handleGetAllURL)
-	api.Use(s.requireUserLogin).Get("/url/:shortUrl", s.handleGetURL)
+	api.Post("/url", s.handleCreateShortURL)
+	api.Get("/url", s.handleGetAllURL)
+	api.Patch("/url", s.handleURLUpdate)
+	api.Get("/url/clicks", s.handleGetShortURLClicks)
+	api.Get("/url/:shortUrl", s.handleGetURL)
 	api.Get("/url/:shortUrl/qr", s.handleCreateURLQR)
 }
 

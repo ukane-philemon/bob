@@ -15,6 +15,9 @@ const (
 	// urlsCollectionName is the name of the collection that stores shortened
 	// URLs.
 	urlsCollectionName = "urls"
+	// urlClicksCollection is the name of the collection that stores shortened
+	// URL clicks.
+	urlClicksCollection = "url_clicks"
 	// usersCollectionName is the name of the collection that stores user
 	// information.
 	usersCollectionName = "users"
@@ -22,9 +25,9 @@ const (
 
 type Config struct {
 	// DBName is the name of the database.
-	DBName string `long:"mongodbDBName" env:"MONGODB_DB_NAME" default:"bob" description:"MongoDB database name"`
+	DBName string `long:"dbname" env:"MONGODB_DB_NAME" default:"bob" description:"MongoDB database name"`
 	// ConnectionUrl is the URL used to connect to the database.
-	ConnectionURL string `long:"mongodbURL" env:"MONGODB_CONNECTION_URL" description:"MongoDB connection URL"`
+	ConnectionURL string `long:"connectionurl" env:"MONGODB_CONNECTION_URL" description:"MongoDB connection URL"`
 }
 
 // MongoDB is the database handler for MongoDB. Implements db.DataStore.

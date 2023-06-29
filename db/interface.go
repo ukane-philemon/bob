@@ -4,7 +4,7 @@ const (
 	// URLLength is the length of the shortened URL.
 	URLLength = 6
 	// MaxGuestURLs is the maximum number of URLs a guest can shorten.
-	MaxGuestURLs = 5
+	MaxGuestURLs = 2
 )
 
 // DataStore is the interface that wraps the basic database operations.
@@ -19,17 +19,23 @@ type DataStore interface {
 	// LoginUser logs a user in and returns a nil error if the user exists and the
 	// password is correct.
 	LoginUser(email string, password []byte) (*User, error)
-	// SaveUserURL adds a new URL to the database and returns the shortened URL.
-	SaveUserURL(email string, longURL string) (*ShortURLInfo, error)
-	// SaveGuestURL is like SaveUserURL but only for users without an account.
-	SaveGuestURL(id string, longURL string) (*ShortURLInfo, error)
-	// UpdateShortURL updates the number of clicks for the specified short URL.
-	UpdateShortURL(short string) error
+	// CreateNewShortURL adds a new URL to the database and returns the
+	// shortened URL. userID will can be any unique identifier for a guest user
+	// but it is an email for non-guest users.
+	CreateNewShortURL(userID, longURL, customShortURL string, isGuest bool) (*ShortURLInfo, error)
+	// UpdateShortURL updates the information for the specified short URL. This
+	// method is used for click update and link editing.
+	UpdateShortURL(shortURL string, newLongURL string, click *ShortURLClick) error
 	// RetrieveURLInfo fetches information about a short URL using the shortened
 	// URL.
 	RetrieveURLInfo(short string) (*ShortURLInfo, error)
 	// RetrieveUserURLs fetches all the shorted URLs for the specified user.
 	RetrieveUserURLs(email string) ([]*ShortURLInfo, error)
+	// RetrieveShortURLClicks returns a list of complete click information for a
+	// short URL.
+	RetrieveShortURLClicks(shortURL string) ([]*ShortURLClick, error)
+	// ToggleShortLinkStatus enables/disables a short link.
+	ToggleShortLinkStatus(shortURL string, disable bool) error
 	// Close ends the connection to the database.
 	Close() error
 }
@@ -39,7 +45,7 @@ type User struct {
 	Username   string `json:"username" bson:"username"`
 	Email      string `json:"email" bson:"email"`
 	TotalLinks int    `json:"totalLinks" bson:"total_links"`
-	CreatedAt  string `json:"createdAt" bson:"created_at"`
+	Timestamp  int64  `json:"timestamp" bson:"timestamp"`
 }
 
 // ShortURLInfo represents a short URL in the database.
@@ -48,5 +54,15 @@ type ShortURLInfo struct {
 	ShortURL    string `json:"shortUrl" bson:"short_url"`
 	OriginalURL string `json:"originalUrl" bson:"original_url"`
 	Clicks      int32  `json:"clicks" bson:"clicks"`
-	CreatedAt   string `json:"createdAt" bson:"created_at"`
+	Disabled    bool   `json:"disabled" bson:"disabled"`
+	Timestamp   int64  `json:"timestamp" bson:"timestamp"`
+}
+
+// ShortURLClick is information about a click on a short URL.
+type ShortURLClick struct {
+	IP         string `json:"ip" bson:"ip"`
+	Browser    string `json:"browser" bson:"browser"`
+	Device     string `json:"device" bson:"device"`
+	DeviceType string `json:"deviceType" bson:"device_type"`
+	Timestamp  int64  `json:"timestamp" bson:"timestamp"`
 }

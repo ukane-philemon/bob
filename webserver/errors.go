@@ -33,6 +33,6 @@ func errUnauthorized(msg string) error {
 
 // errInternal returns a server error.
 func errInternal(err error) error {
-	log.Println("Server error:", err)
+	appLog.Println("Server error:", err)
 	return newAPIResponse(false, codeInternal, "Something unexpected happened. Please try again later.")
 }

@@ -44,8 +44,8 @@ func main() {
 		exitWithErr(err)
 	}
 
-	if cfg.MongoDBCfg.ConnectionURL == "" && !cfg.DevMode {
-		exitWithErr(fmt.Errorf("MongoDB connection URL is required for production mode"))
+	if cfg.MongoDBCfg.ConnectionURL == "" {
+		exitWithErr(fmt.Errorf("MongoDB connection URL is required"))
 	}
 
 	db, err := mongodb.Connect(ctx, cfg.MongoDBCfg)

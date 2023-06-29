@@ -253,6 +253,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIResponse"
+    
+      security:
+        - Authorization: []
+    patch:
+      summary: Update an existing link
+      description: Update an existing link
+      operationId: linkUpdate
+      parameters:
+        - name: shortUrl
+          in: query
+          description: Short ULR to be updated
+          required: true
+          schema:
+            type: string
+      tags:
+        - Links
+      responses:
+        "200":
+          description: Update successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
       security:
         - Authorization: []
   /api/url/{shortUrl}:
@@ -329,6 +364,47 @@ paths:
                 $ref: "#/components/schemas/APIResponse"
       security:
         - Authorization: []
+  /api/url/clicks:
+    get:
+      summary: Get a list of clicks
+      description: Get a list of complete click analytics for a link.
+      operationId: shortURLClicks
+      tags:
+        - Links
+      parameters:
+        - name: shortUrl
+          in: path
+          description: Short URL to be retrieved without the domain. For example, if the short URL is https://example.com/abc123, the value of this parameter should be abc123.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: QR code generated successfully
+          content:
+            image/png:
+              schema:
+                additionalProperties:
+                  $ref: "#/components/schemas/APIResponse"
+                properties:
+                  data:
+                    type: array
+                    item:
+                      $ref: '#/components/schemas/shortURLClick'
+        "400":
+          description: Link not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
+      security:
+        - Authorization: []
 components:
   schemas:
     shortURLInfo:
@@ -343,12 +419,15 @@ components:
         originalUrl:
           type: string
           description: Original URL
+        disabled
+          type: boolean
+          description: Whether the link has been disabled.
         clicks:
           type: integer
           description: Number of clicks on the link
-        createdAt:
-          type: string
-          description: Link's creation date.
+       timestamp:
+          type: integer
+          decription: Link creation date timestamp
     createAccount:
       type: object
       properties:
@@ -360,14 +439,16 @@ components:
           description: Must be a valid email address.
         password:
          type: string
-         format: byte
          description: Must be at least 8 characters long.
     createLink:
       type: object
       properties:
-        url:
+        longURL:
           type: string
           description: Must be a valid URL.
+        customShortURL:
+          type: string
+          decription: A unique short to use instead of generating. Optional but only for authenticated users.
       required:
         - url
     login:
@@ -378,7 +459,6 @@ components:
             description: Must be a valid email address.
           password:
             type: string
-            format: binary
             description: User password.
       required:
           - email
@@ -412,9 +492,27 @@ components:
             totalLinks:
               type: integer
               description: Total short URLs created by the user
-            createdAt:
-              type: string
-              description: User's creation date
+            timestamp:
+              type: integer
+              decription: User creation date timestamp
+    shortURLClick:
+      type: object
+      properties:
+        ip:
+          type: string
+          decription: Click IP address
+        deviceType:
+          type: string
+          decription: Click device type
+        device:
+          type: string
+          decription: Click device
+        browser:
+         type: integer
+          decription: Click browser of origin
+        timestamp:
+          type: integer
+          decription: Click timestamp
   securitySchemes:
     Authorization:
       type: http

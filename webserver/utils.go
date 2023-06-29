@@ -5,10 +5,13 @@ import (
 	"errors"
 	"net/http"
 	"net/mail"
+	"regexp"
 	"strings"
 
 	"github.com/ukane-philemon/bob/db"
 )
+
+var customURLRegEx = regexp.MustCompile("^[a-zA-Z0-9]+$")
 
 // These are the HTTP codes returned by the API.
 const (

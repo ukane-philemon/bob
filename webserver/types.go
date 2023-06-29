@@ -3,6 +3,7 @@ package webserver
 import (
 	"net/http"
 
+	"github.com/mileusna/useragent"
 	"github.com/ukane-philemon/bob/db"
 )
 
@@ -51,20 +52,23 @@ func (p passwordBytes) Zero() {
 // createAccountRequest is the request body for the POST /api/create-account
 // endpoint.
 type createAccountRequest struct {
-	Username string        `json:"username"`
-	Email    string        `json:"email"`
-	Password passwordBytes `json:"password"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // loginRequest is the request body for the POST /api/login endpoint.
 type loginRequest struct {
-	Email    string        `json:"email"`
-	Password passwordBytes `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // createShortURLRequest is the request body for the "POST /api/url" endpoint
 type createShortURLRequest struct {
-	URL string `json:"url"`
+	LongURL string `json:"longURL"`
+	// CustomShortURL is the preferred short URL used instead of generating a
+	// new one.
+	CustomShortURL string `json:"customShortURL"`
 }
 
 // usernameExitsResponse is the response returned by the GET
@@ -90,4 +94,36 @@ type loginResponse struct {
 type shortURLResponse struct {
 	*APIResponse
 	Data interface{} `json:"data"` // *db.ShortURLInfo or []*db.ShortURLInfo
+}
+
+// userAgent is a wrapper around useragent.UserAgent.
+type userAgent struct {
+	useragent.UserAgent
+}
+
+// parseUserAgent wraps useragent.Parse.
+func parseUserAgent(userAgentInfo string) userAgent {
+	return userAgent{useragent.Parse(userAgentInfo)}
+}
+
+// DeviceType returns a string representation of the device type.
+func (ua userAgent) DeviceType() string {
+	switch {
+	case ua.Bot:
+		return "bot"
+	case ua.Desktop:
+		return "desktop"
+	case ua.Mobile:
+		return "mobile"
+	case ua.Tablet:
+		return "tablet"
+	default:
+		return "unkown"
+	}
+}
+
+// updateShortURLRequest is the requesrt body to update a short URL.
+type updateShortURLRequest struct {
+	LongURL string `json:"longURL"`
+	Disable *bool  `json:"disable"`
 }

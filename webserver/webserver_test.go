@@ -10,8 +10,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/ukane-philemon/bob/db"
 	bobdb "github.com/ukane-philemon/bob/db"
 )
 
@@ -112,7 +114,7 @@ func newTDB() *tDB {
 			Username:   "fibrealz",
 			Email:      "test@email.com",
 			TotalLinks: 20,
-			CreatedAt:  "2023-06-1",
+			Timestamp:  time.Now().Unix(),
 		},
 		urls: make(map[string]*bobdb.ShortURLInfo),
 	}
@@ -155,25 +157,21 @@ func (db *tDB) LoginUser(email string, password []byte) (*bobdb.User, error) {
 		return nil, fmt.Errorf("%w: user does not exist", bobdb.ErrorBadRequest)
 	}
 
-	if !bytes.Equal(dummyUserPassword, password) {
+	if !bytes.Equal(passwordBytes(dummyUserPassword), password) {
 		return nil, fmt.Errorf("%w: incorrect password", bobdb.ErrorBadRequest)
 	}
 
 	return db.dummyUser, nil
 }
 
-// SaveUserURL adds a new URL to the database and returns the shortened URL.
-func (db *tDB) SaveUserURL(email string, longURL string) (*bobdb.ShortURLInfo, error) {
-	return nil, errors.New("Not implemented")
-}
-
-// SaveGuestURL is like SaveUserURL but only for users without an account.
-func (db *tDB) SaveGuestURL(id string, longURL string) (*bobdb.ShortURLInfo, error) {
+// CreateNewShortURL creates a new short URL. "userID" is the user's email if
+// they are logged in, otherwise it is the unique identifier for the guest user.
+func (db *tDB) CreateNewShortURL(userID, longURL, customShortURL string, isGuest bool) (*db.ShortURLInfo, error) {
 	return nil, errors.New("Not implemented")
 }
 
 // UpdateShortURL updates the number of clicks for the specified short URL.
-func (db *tDB) UpdateShortURL(short string) error {
+func (db *tDB) UpdateShortURL(shortURL, newLongURL string, click *bobdb.ShortURLClick) error {
 	return errors.New("Not implemented")
 }
 
@@ -186,6 +184,17 @@ func (db *tDB) RetrieveURLInfo(short string) (*bobdb.ShortURLInfo, error) {
 // RetrieveUserURLs fetches all the shorted URLs for the specified user.
 func (db *tDB) RetrieveUserURLs(email string) ([]*bobdb.ShortURLInfo, error) {
 	return nil, errors.New("Not implemented")
+}
+
+// RetrieveShortURLClicks returns a list of complete click information for a
+// short URL.
+func (db *tDB) RetrieveShortURLClicks(shortURL string) ([]*db.ShortURLClick, error) {
+	return nil, errors.New("Not implemented")
+}
+
+// ToggleShortLinkStatus enables/disables a short link.
+func (db *tDB) ToggleShortLinkStatus(shortURL string, disable bool) error {
+	return errors.New("Not Implemented")
 }
 
 // Close ends the connection to the database.

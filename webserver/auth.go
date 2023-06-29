@@ -6,12 +6,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// requireUserLogin is a middleware handler that ensures that a user is logged
-// in before access to specific endpoints are allowed.
-func (s *WebServer) requireUserLogin(c *fiber.Ctx) error {
+// validateIfLoggedIn is a middleware handle that validates a user token, if
+// present. Each endpoint will reject the request if use login is required.
+func (s *WebServer) validateIfLoggedIn(c *fiber.Ctx) error {
 	authHeader := c.Get(fiber.HeaderAuthorization)
 	if authHeader == "" {
-		return errUnauthorized("Missing authorization header")
+		return c.Next() // No auth header, so no user is logged in.
 	}
 
 	authTokenParts := strings.Split(authHeader, " ")
@@ -28,15 +28,4 @@ func (s *WebServer) requireUserLogin(c *fiber.Ctx) error {
 	// Set the user email in the context.
 	c.Context().SetUserValue(ctxID, token.ID)
 	return c.Next()
-}
-
-// validateIfLoggedIn is a middleware handle that validates a user token, if
-// present. This is used for endpoints that allows guest and logged in users.
-func (s *WebServer) validateIfLoggedIn(c *fiber.Ctx) error {
-	authHeader := c.Get(fiber.HeaderAuthorization)
-	if authHeader == "" {
-		return nil // No auth header, so no user is logged in.
-	}
-
-	return s.requireUserLogin(c)
 }

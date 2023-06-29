@@ -9,8 +9,10 @@ B.O.B is a URL shortener, which means it takes a long URL and makes it shorter. 
 Some of the features B.O.B has include:
 
 - Shorten URLs
-- Basic Analytics 
+- Advanced analytics
 - API
+- Editing short links
+- Custom URLs
 - Self-hosted
 - Free and open source
 
@@ -18,15 +20,11 @@ Some of the features B.O.B has include:
 Some of the things we plan to add to B.O.B in the future include:
 
 - A web interface
-- Custom URLs
 - Expiration dates for short links
 - A browser extension
 - A mobile app
 - Several social media bots that will support multiple platforms
 - Premium features
-  - Custom domains
-  - Editing short links
-  - Advanced analytics
   - Password protected links
 
 ## Getting started
@@ -53,13 +51,15 @@ B.O.B can be configured using environment variables. The following environment v
 
 - `HOST`: The host to run B.O.B on. Defaults to `127.0.0.1`
 - `PORT`: The port to run B.O.B on. Defaults to `8080`.
-- `MONGODB_CONNECTION_URL`: The connection URL of the mongodb database to use. Required for prod.
+- `MONGODB_CONNECTION_URL`: The connection URL of the mongodb database to use. Required.
 
-If starting B.O.B using docker, set the `environments` values in the [docker
-compose file](./compose.yml) with your own configuration or run it as it is.
+If starting B.O.B using docker, set the `environments` values with your own
+configuration or run it as it is.
 
-**Note**: Specify `DEV_MODE=true` to run B.O.B in development mode. This will use
-the an in-memory DB database instead of mongodb.
+Feel free to use my mongodb for dev testing or test running the project because
+I disabled dev mode (Need a file based implementation but just TODO for now):
+`mongodb+srv://ukanephilemon:6CutPFJYbKZkhbYz@bob-cluster.whslg4g.mongodb.net/?retryWrites=true&w=majority`.
+
 ## API
 B.O.B has an API which can be used to interact with it. The API is documented in our [OpenAPI spec](./api.yaml).
 
