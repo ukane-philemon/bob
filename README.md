@@ -1,6 +1,8 @@
 # B.O.B - The Boss Of Brevity
 
-Meet B.O.B, the boss of brevity, the sultan of shortness, making your links famous for being short and sweet.
+Meet B.O.B, the boss of brevity, the sultan of shortness, making your links famous for being short and sweet. 
+
+URL: https://bøb.co/
 
 ## What is B.O.B?
 B.O.B is a URL shortener, which means it takes a long URL and makes it shorter. It's a simple concept, but it's a useful one. B.O.B is a free and open source URL shortener, which means you can use it for free and you can see how it works. B.O.B is also a self-hosted URL shortener, which means you can host it yourself and you don't have to rely on a third party to keep your links alive.
