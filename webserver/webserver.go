@@ -109,6 +109,22 @@ func registerRoutes(s *WebServer) {
 
 // Start starts the WebServer.
 func (s *WebServer) Start() error {
+	// Start a goroutine to clean cache.
+	go func() {
+		tick := time.NewTicker(time.Hour * 2)
+		defer tick.Stop()
+		for {
+			<-tick.C
+			halfDay := 12 * time.Hour
+			s.urlMtx.Lock()
+			for shortURL, l := range s.urlCache {
+				if time.Since(time.Unix(l.Timestamp, 0)) > halfDay {
+					delete(s.urlCache, shortURL)
+				}
+			}
+			s.urlMtx.Unlock()
+		}
+	}()
 	return s.Listen(s.addr)
 }
 
