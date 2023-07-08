@@ -1,9 +1,8 @@
-openapi: 3.1.0
+openapi: 3.0.0
 info:
   title: Boss of Brevity
   version: 1.0.0
-  summary: Meet BOB, the boss of brevity, the sultan of shortness, making your links famous for being short and sweet.
-  description: This is the BOB API specification. It is used to generate the API documentation and to validate the API requests and responses. API request are rate limited to 1000 successful requests per minute. The API is secured using JWT tokens. To get a token, login to your account and use the token in the `Authorization` header of your requests. The token is valid for 24hours after which you must login again.
+  description: Meet BOB, the boss of brevity, the sultan of shortness, making your links famous for being short and sweet. This is the BOB API specification. It is used to generate the API documentation and to validate the API requests and responses. API request are rate limited to 1000 successful requests per minute. The API is secured using JWT tokens. To get a token, login to your account and use the token in the `Authorization` header of your requests. The token is valid for 24hours after which you must login again.
   contact:
     name: BOB
     url: https://github.com/ukane-philemon
@@ -18,7 +17,7 @@ servers:
     description: Local development server
     variables:
       host:
-        default: localhost
+        default: "127.0.0.1"
       port:
         default: "8080"
 paths:
@@ -198,7 +197,7 @@ paths:
       tags:
         - Links
       requestBody:
-        description: Link to be created
+        description: Link to be created. Provide a valid authorization token in the Authorization header to create a link for the current user.
         required: true
         content:
           application/json:
@@ -210,10 +209,11 @@ paths:
           content:
             application/json:
               schema:
+                type: "object"
                 additionalProperties:
                   $ref: "#/components/schemas/APIResponse"
                 properties:
-                  data: 
+                  data:
                     $ref: "#/components/schemas/shortURLInfo"
         "400":
           description: Invalid link
@@ -231,7 +231,7 @@ paths:
         - Authorization: []
     get:
       summary: Get all links
-      description: Get all links created by the user. User must be logged in or provide an API key.
+      description: Get all links created by the user. User must provide a valid authorization token.
       operationId: getLinks
       tags:
         - Links
@@ -253,7 +253,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIResponse"
-    
       security:
         - Authorization: []
     patch:
@@ -269,6 +268,11 @@ paths:
             type: string
       tags:
         - Links
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateShortURL"
       responses:
         "200":
           description: Update successful.
@@ -312,8 +316,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIResponse"
                 properties:
-                 data:
-                  $ref: "#/components/schemas/shortURLInfo"
+                  data:
+                    $ref: "#/components/schemas/shortURLInfo"
         "404":
           description: Link not found
           content:
@@ -373,24 +377,25 @@ paths:
         - Links
       parameters:
         - name: shortUrl
-          in: path
+          in: query
           description: Short URL to be retrieved without the domain. For example, if the short URL is https://example.com/abc123, the value of this parameter should be abc123.
           required: true
           schema:
             type: string
       responses:
         "200":
-          description: QR code generated successfully
+          description: Clicks found
           content:
-            image/png:
+            application/json:
               schema:
+                type: "object"
                 additionalProperties:
                   $ref: "#/components/schemas/APIResponse"
                 properties:
                   data:
                     type: array
-                    item:
-                      $ref: '#/components/schemas/shortURLClick'
+                    items:
+                      $ref: "#/components/schemas/shortURLClick"
         "400":
           description: Link not found
           content:
@@ -419,15 +424,15 @@ components:
         originalUrl:
           type: string
           description: Original URL
-        disabled
+        disabled:
           type: boolean
           description: Whether the link has been disabled.
         clicks:
           type: integer
           description: Number of clicks on the link
-       timestamp:
+        timestamp:
           type: integer
-          decription: Link creation date timestamp
+          description: Link creation date timestamp
     createAccount:
       type: object
       properties:
@@ -438,8 +443,8 @@ components:
           type: string
           description: Must be a valid email address.
         password:
-         type: string
-         description: Must be at least 8 characters long.
+          type: string
+          description: Must be at least 8 characters long.
     createLink:
       type: object
       properties:
@@ -448,21 +453,21 @@ components:
           description: Must be a valid URL.
         customShortURL:
           type: string
-          decription: A unique short to use instead of generating. Optional but only for authenticated users.
+          description: A unique short to use instead of generating. Optional but only for authenticated users.
       required:
         - url
     login:
       type: object
       properties:
-          email:
-            type: string
-            description: Must be a valid email address.
-          password:
-            type: string
-            description: User password.
+        email:
+          type: string
+          description: Must be a valid email address.
+        password:
+          type: string
+          description: User password.
       required:
-          - email
-          - password
+        - email
+        - password
     APIResponse:
       type: object
       properties:
@@ -474,7 +479,7 @@ components:
           description: The HTTP response code for this request.
         message:
           type: string
-          description: Message describing the result of the request.  
+          description: Message describing the result of the request.
     userInfo:
       type: object
       additionalProperties:
@@ -494,25 +499,35 @@ components:
               description: Total short URLs created by the user
             timestamp:
               type: integer
-              decription: User creation date timestamp
+              description: User creation date timestamp
     shortURLClick:
       type: object
       properties:
         ip:
           type: string
-          decription: Click IP address
+          description: Click IP address
         deviceType:
           type: string
-          decription: Click device type
+          description: Click device type
         device:
           type: string
-          decription: Click device
+          description: Click device
         browser:
-         type: integer
-          decription: Click browser of origin
+          type: integer
+          description: Click browser of origin
         timestamp:
           type: integer
-          decription: Click timestamp
+          description: Click timestamp
+    updateShortURL:
+      type: object
+      properties:
+        longURL:
+          type: string
+          description: The new long URL for the short URL. If providing this "disable" must be empty.
+        disable:
+          type: boolean
+          description: Specify if you wan to disable this short URL. If providing this "longURL" must be empty.
+
   securitySchemes:
     Authorization:
       type: http

@@ -11,15 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-const (
-	// shortURLKey is the key for the short URL in the database. See:
-	// db.ShortURLInfo.ShortURL.
-	shortURLKey = "short_url"
-	// ownerIDKey is the key for the owner ID in the database. See:
-	// db.ShortURLInfo.OwnerID.
-	ownerIDKey = "owner_id"
-)
-
 // CreateNewShortURL creates a new short URL. "userID" is the user's email if
 // they are logged in, otherwise it is the unique identifier for the guest user.
 func (m *MongoDB) CreateNewShortURL(userID, longURL, customShortURL string, isGuest bool) (*db.ShortURLInfo, error) {
@@ -27,13 +18,13 @@ func (m *MongoDB) CreateNewShortURL(userID, longURL, customShortURL string, isGu
 		return nil, fmt.Errorf("%w: id and url are required", db.ErrorBadRequest)
 	}
 
-	if !isGuest && !isValidEmail(userID) {
+	if !isGuest && !db.IsValidEmail(userID) {
 		return nil, fmt.Errorf("%w: invalid email", db.ErrorBadRequest)
 	}
 
 	if isGuest {
 		// Check if they have reached the maximum number of URLs.
-		count, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", ownerIDKey): userID})
+		count, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{urlMapKey(ownerIDKey): userID})
 		if err != nil {
 			return nil, fmt.Errorf("error counting documents: %v", err)
 		}
@@ -41,12 +32,12 @@ func (m *MongoDB) CreateNewShortURL(userID, longURL, customShortURL string, isGu
 		if count >= db.MaxGuestURLs {
 			return nil, fmt.Errorf("%w: maximum number of URLs reached", db.ErrorBadRequest)
 		}
-	} else if res := m.usersCollection().FindOne(m.ctx, bson.M{"email": userID}); res.Err() != nil { // Check if user exists.
+	} else if res := m.usersCollection().FindOne(m.ctx, bson.M{userMapKey(emailKey): userID}); res.Err() != nil { // Check if user exists.
 		return nil, handleUserError(res.Err())
 	}
 
 	newURLInfo := &urlInfo{
-		ShortURLInfo: &db.ShortURLInfo{
+		URL: &db.ShortURLInfo{
 			OwnerID:     userID,
 			OriginalURL: longURL,
 			Timestamp:   time.Now().Unix(),
@@ -56,96 +47,94 @@ func (m *MongoDB) CreateNewShortURL(userID, longURL, customShortURL string, isGu
 
 	customShortURL = strings.TrimSpace(customShortURL)
 	if customShortURL != "" {
-		newURLInfo.ShortURL = customShortURL
-		nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", shortURLKey): customShortURL})
-		if err != nil {
-			return nil, handleURLError(err)
-		}
-
-		if nLinks > 0 {
-			return nil, fmt.Errorf("%w: custom short URL is already exists", db.ErrorBadRequest)
-		}
-
-		_, err = m.urlsCollection().InsertOne(m.ctx, newURLInfo)
+		newURLInfo.URL.ShortURL = customShortURL
+		_, err := m.urlsCollection().InsertOne(m.ctx, newURLInfo)
 		if err != nil {
 			if mongo.IsDuplicateKeyError(err) {
-				return nil, fmt.Errorf("%w: custom short URL is already exists", db.ErrorBadRequest)
+				return nil, fmt.Errorf("%w: custom short URL is already exists %v", db.ErrorBadRequest, err)
 			}
-
 			return nil, fmt.Errorf("error saving guest URL: %v", err)
 		}
 
 	} else {
 		// Check if long URL already exists for this user.
-		var oldURL *urlInfo
-		if err := m.urlsCollection().FindOne(m.ctx, bson.M{mapKey("url", ownerIDKey): userID, "original_url": longURL}).Decode(&oldURL); err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, fmt.Errorf("error retireving URL info: %w", err)
+		var oldURLInfo *urlInfo
+		err := m.urlsCollection().FindOne(m.ctx, bson.M{urlMapKey(ownerIDKey): userID, urlMapKey(originalURLKey): longURL}).Decode(&oldURLInfo)
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, fmt.Errorf("error retrieving URL info: %w", err)
 		}
 
-		if oldURL != nil {
-			return oldURL.ShortURLInfo, nil
+		if oldURLInfo != nil {
+			return oldURLInfo.URL, nil
 		}
 
 		// Create the short URL.
 		maxTries := 5
 		url := longURL
-		newURLInfo.ShortURL = db.GenerateShortURL(url)
+		var savedURL bool
 		for maxTries > 0 {
+			newURLInfo.URL.ShortURL = db.GenerateShortURL(url)
 			// Insert the short URL into the database.
 			res, err := m.urlsCollection().InsertOne(m.ctx, newURLInfo)
 			if err != nil && !mongo.IsDuplicateKeyError(err) {
 				return nil, fmt.Errorf("error saving guest URL: %v", err)
 			}
 
+			fmt.Printf("%T, %v %v %v", err, err, newURLInfo.URL.ShortURL, mongo.IsDuplicateKeyError(err))
+
 			if res != nil && res.InsertedID != nil {
+				savedURL = true
 				break
 			}
 
-			randomStr, err := randomString(db.URLLength)
+			randomStr, err := db.RandomString(db.URLLength)
 			if err != nil {
 				return nil, fmt.Errorf("error generating random string: %v", err)
 			}
 
 			url = longURL + randomStr
-			newURLInfo.ShortURL = db.GenerateShortURL(url)
 			maxTries--
+		}
+
+		if !savedURL {
+			return nil, errors.New("failed to save new URL")
 		}
 	}
 
-	return m.RetrieveURLInfo(newURLInfo.ShortURL)
+	return m.RetrieveURLInfo(newURLInfo.URL.ShortURL)
 }
 
 // RetrieveURLInfo fetches information about a short URL using the shortened
 // URL. Implements db.DataStore.
-func (m *MongoDB) RetrieveURLInfo(short string) (*db.ShortURLInfo, error) {
-	if short == "" {
+func (m *MongoDB) RetrieveURLInfo(shortURL string) (*db.ShortURLInfo, error) {
+	if shortURL == "" {
 		return nil, fmt.Errorf("%w: short URL is empty", db.ErrorBadRequest)
 	}
 
-	var url *db.ShortURLInfo
-	if err := m.urlsCollection().FindOne(m.ctx, bson.M{mapKey("url", shortURLKey): short}).Decode(&url); err != nil {
+	var urlInfo *urlInfo
+	if err := m.urlsCollection().FindOne(m.ctx, bson.M{urlMapKey(shortURLKey): shortURL}).Decode(&urlInfo); err != nil {
 		return nil, handleURLError(err)
 	}
 
-	return url, nil
+	return urlInfo.URL, nil
 }
 
 // RetrieveUserURLs fetches all the shorted URLs for the specified user.
 // Implements db.DataStore.
 func (m *MongoDB) RetrieveUserURLs(email string) ([]*db.ShortURLInfo, error) {
 	var urls []*db.ShortURLInfo
-	cursor, err := m.urlsCollection().Find(m.ctx, bson.M{mapKey("url", ownerIDKey): email})
+	cursor, err := m.urlsCollection().Find(m.ctx, bson.M{urlMapKey(ownerIDKey): email})
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving user URLs: %v", err)
 	}
 
 	for cursor.Next(m.ctx) {
-		var url *urlInfo
-		if err := cursor.Decode(&url); err != nil {
+		var urlInfo *urlInfo
+		if err := cursor.Decode(&urlInfo); err != nil {
 			return nil, fmt.Errorf("error decoding user URL: %v", err)
 		}
 
-		urls = append(urls, url.ShortURLInfo)
+		urls = append(urls, urlInfo.URL)
 	}
 
 	return urls, nil
@@ -159,10 +148,10 @@ func (m *MongoDB) UpdateShortURL(shortURL, newLongURL string, click *db.ShortURL
 	}
 
 	// Update the short URL clicks in the database.
-	filter := bson.M{mapKey("url", shortURLKey): shortURL}
+	filter := bson.M{urlMapKey(shortURLKey): shortURL}
 	update := make(bson.M)
 	if click != nil {
-		update["$inc"] = bson.M{"clicks": 1}
+		update["$inc"] = bson.M{urlMapKey("clicks"): 1}
 		_, err := m.urlClickCollection().InsertOne(m.ctx, &urlClick{
 			ShortURL:      shortURL,
 			ShortURLClick: click,
@@ -171,7 +160,7 @@ func (m *MongoDB) UpdateShortURL(shortURL, newLongURL string, click *db.ShortURL
 			return fmt.Errorf("error inserting new click: %w", err)
 		}
 	} else if newLongURL != "" {
-		update["$set"] = bson.M{"original_url": newLongURL}
+		update["$set"] = bson.M{urlMapKey(originalURLKey): newLongURL}
 	}
 
 	res, err := m.urlsCollection().UpdateOne(m.ctx, filter, update)
@@ -194,25 +183,25 @@ func (m *MongoDB) RetrieveShortURLClicks(shortURL string) ([]*db.ShortURLClick, 
 	}
 
 	// Confirm link exists
-	count, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", shortURLKey): shortURL})
+	count, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{urlMapKey(shortURLKey): shortURL})
 	if err != nil {
 		return nil, handleURLError(err)
 	}
 
-	if count < 1 {
+	if count == 0 {
 		return nil, fmt.Errorf("%w: short url was not found", db.ErrorBadRequest)
 	}
 
-	var urlClicks []*db.ShortURLClick
 	cur, err := m.urlClickCollection().Find(m.ctx, bson.M{shortURLKey: shortURL})
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		} else {
-			return nil, fmt.Errorf("error retreiveing link clicks: %w", err)
+			return nil, fmt.Errorf("error retrieving link clicks: %w", err)
 		}
 	}
 
+	var urlClicks []*db.ShortURLClick
 	for cur.Next(m.ctx) {
 		var click *urlClick
 		if err = cur.Decode(&click); err != nil {
@@ -230,8 +219,8 @@ func (m *MongoDB) ToggleShortLinkStatus(shortURL string, disable bool) error {
 		return fmt.Errorf("%w: short URL is empty", db.ErrorBadRequest)
 	}
 
-	filter := bson.M{mapKey("url", shortURLKey): shortURL}
-	update := bson.M{"$set": bson.M{"disabled": disable}}
+	filter := bson.M{urlMapKey(shortURLKey): shortURL}
+	update := bson.M{"$set": bson.M{urlMapKey("disabled"): disable}}
 	res, err := m.urlsCollection().UpdateOne(m.ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("error updating short URL: %v", err)
@@ -261,4 +250,10 @@ func handleURLError(err error) error {
 	}
 
 	return fmt.Errorf("error retrieving URL info: %v", err)
+}
+
+// urlKey returns the key for the specified URL field.
+func urlMapKey(key string) string {
+	// This key is and must remain consistent with the bson key used in urlInfo.
+	return mapKey("url", key)
 }

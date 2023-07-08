@@ -81,7 +81,7 @@ type usernameExitsResponse struct {
 // userInfoResponse is the response returned by the GET /api/user endpoint.
 type userInfoResponse struct {
 	*APIResponse
-	Data *db.User `json:"data"`
+	Data *db.UserInfo `json:"data"`
 }
 
 type loginResponse struct {

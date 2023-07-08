@@ -13,7 +13,7 @@ import (
 // UsernameExists checks if a username exists in the database. Implements
 // db.DataStore.
 func (m *MongoDB) UsernameExists(username string) (bool, error) {
-	res := m.usersCollection().FindOne(m.ctx, bson.M{"user.username": username})
+	res := m.usersCollection().FindOne(m.ctx, bson.M{userMapKey(usernameKey): username})
 	if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
 		return false, res.Err()
 	}
@@ -29,7 +29,7 @@ func (m *MongoDB) CreateUser(username, email string, password []byte) error {
 		return fmt.Errorf("%w: username, email, and password are required", db.ErrorBadRequest)
 	}
 
-	if !isValidEmail(email) {
+	if !db.IsValidEmail(email) {
 		return fmt.Errorf("%w: invalid email", db.ErrorBadRequest)
 	}
 
@@ -39,7 +39,7 @@ func (m *MongoDB) CreateUser(username, email string, password []byte) error {
 	}
 
 	userInfo := &completeUserInfo{
-		User: &db.User{
+		UserInfo: &db.UserInfo{
 			Username:  username,
 			Email:     email,
 			Timestamp: time.Now().Unix(),
@@ -60,12 +60,12 @@ func (m *MongoDB) CreateUser(username, email string, password []byte) error {
 
 // RetrieveUserInfo fetches information about a user using the email. Implements
 // db.DataStore.
-func (m *MongoDB) RetrieveUserInfo(email string) (*db.User, error) {
-	if !isValidEmail(email) {
+func (m *MongoDB) RetrieveUserInfo(email string) (*db.UserInfo, error) {
+	if !db.IsValidEmail(email) {
 		return nil, fmt.Errorf("%w: a valid email is required", db.ErrorBadRequest)
 	}
 
-	res := m.usersCollection().FindOne(m.ctx, bson.M{"user.email": email})
+	res := m.usersCollection().FindOne(m.ctx, bson.M{userMapKey(emailKey): email})
 	if res.Err() != nil {
 		return nil, handleUserError(res.Err())
 	}
@@ -76,19 +76,19 @@ func (m *MongoDB) RetrieveUserInfo(email string) (*db.User, error) {
 	}
 
 	// Set user's total links
-	nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", ownerIDKey): email})
+	nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{urlMapKey(ownerIDKey): email})
 	if err != nil {
 		return nil, handleURLError(err)
 	}
 	userInfo.TotalLinks = int(nLinks)
 
-	return userInfo.User, nil
+	return userInfo.UserInfo, nil
 }
 
 // LoginUser logs a user in and returns a nil error if the user exists and the
 // password is correct. Implements db.DataStore.
-func (m *MongoDB) LoginUser(email string, password []byte) (*db.User, error) {
-	if !isValidEmail(email) {
+func (m *MongoDB) LoginUser(email string, password []byte) (*db.UserInfo, error) {
+	if !db.IsValidEmail(email) {
 		return nil, fmt.Errorf("%w: a valid email is required", db.ErrorBadRequest)
 	}
 
@@ -96,7 +96,7 @@ func (m *MongoDB) LoginUser(email string, password []byte) (*db.User, error) {
 		return nil, fmt.Errorf("%w: password is required", db.ErrorBadRequest)
 	}
 
-	res := m.usersCollection().FindOne(m.ctx, bson.M{"user.email": email})
+	res := m.usersCollection().FindOne(m.ctx, bson.M{userMapKey(emailKey): email})
 	if res.Err() != nil {
 		return nil, handleUserError(res.Err())
 	}
@@ -111,13 +111,13 @@ func (m *MongoDB) LoginUser(email string, password []byte) (*db.User, error) {
 	}
 
 	// Set user's total links
-	nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{mapKey("url", ownerIDKey): email})
+	nLinks, err := m.urlsCollection().CountDocuments(m.ctx, bson.M{urlMapKey(ownerIDKey): email})
 	if err != nil {
 		return nil, handleURLError(err)
 	}
 	dbUserInfo.TotalLinks = int(nLinks)
 
-	return dbUserInfo.User, nil
+	return dbUserInfo.UserInfo, nil
 }
 
 // usersCollection returns the users collection.
@@ -132,4 +132,10 @@ func handleUserError(err error) error {
 	}
 
 	return fmt.Errorf("error retrieving user: %w", err)
+}
+
+// userMapKey returns a key for the user map.
+func userMapKey(key string) string {
+	// userKey is the key for the user in the database. See: userInfo.UserInfo.
+	return mapKey("user", key)
 }

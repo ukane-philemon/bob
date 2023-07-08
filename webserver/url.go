@@ -54,6 +54,7 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 	defer fiber.ReleaseResponse(resp)
 
 	if err = a.Parse(); err != nil {
+		appLog.Printf("\nerror parsing URL: %v\n", err)
 		return errInternal(err)
 	}
 
@@ -70,10 +71,15 @@ func (s *WebServer) handleCreateShortURL(c *fiber.Ctx) error {
 		APIResponse: newAPIResponse(true, codeOk, "Request was successful"),
 	}
 
-	apiResp.Data, err = s.db.CreateNewShortURL(userID, form.LongURL, form.CustomShortURL, !isValidEmail(userID))
+	url, err := s.db.CreateNewShortURL(userID, form.LongURL, form.CustomShortURL, !isValidEmail(userID))
 	if err != nil {
 		return translateDBError(err)
 	}
+
+	apiResp.Data = url
+	s.urlMtx.Lock()
+	s.urlCache[url.ShortURL] = url
+	s.urlMtx.Unlock()
 
 	return c.Status(codeOk).JSON(apiResp)
 }
@@ -161,13 +167,19 @@ func (s *WebServer) handleShortUrlRedirect(c *fiber.Ctx) error {
 		return errBadRequest("invalid short URL")
 	}
 
-	urlInfo, err := s.db.RetrieveURLInfo(shortUrl)
-	if err != nil {
-		return translateDBError(err)
+	s.urlMtx.RLock()
+	urlInfo, found := s.urlCache[shortUrl]
+	s.urlMtx.RUnlock()
+	if !found {
+		var err error
+		urlInfo, err = s.db.RetrieveURLInfo(shortUrl)
+		if err != nil {
+			return translateDBError(err)
+		}
 	}
 
 	if urlInfo.Disabled {
-		errBadRequest("Link has been disabled")
+		return errBadRequest("Link has been disabled")
 	}
 
 	userAgentBytes := c.Context().UserAgent()
@@ -180,6 +192,13 @@ func (s *WebServer) handleShortUrlRedirect(c *fiber.Ctx) error {
 		DeviceType: ua.DeviceType(),
 		Timestamp:  time.Now().Unix(),
 	}
+
+	// Update cache
+	s.urlMtx.Lock()
+	if _, found = s.urlCache[shortUrl]; found {
+		s.urlCache[shortUrl].Clicks++
+	}
+	s.urlMtx.Unlock()
 
 	defer func() {
 		err := s.db.UpdateShortURL(shortUrl, "", click)
@@ -213,14 +232,34 @@ func (s *WebServer) handleURLUpdate(c *fiber.Ctx) error {
 	}
 
 	if form.LongURL != "" {
+		longURL, err := url.ParseRequestURI(form.LongURL)
+		if err != nil || longURL.Scheme != "https" || longURL.Host == "" {
+			return errBadRequest("invalid URL, provide an absolute URL with a scheme (only https is allowed) and a host (e.g. https://example.com/path/to/resource))")
+		}
+
 		if err := s.db.UpdateShortURL(shortURL, form.LongURL, nil); err != nil {
 			return translateDBError(err)
 		}
-	} else if form.Disable != nil {
+
+		// Update cache
+		s.urlMtx.Lock()
+		if _, found := s.urlCache[shortURL]; found {
+			s.urlCache[shortURL].OriginalURL = form.LongURL
+		}
+		s.urlMtx.Unlock()
+
+	} else {
 		disable := *form.Disable
 		if err := s.db.ToggleShortLinkStatus(shortURL, disable); err != nil {
 			translateDBError(err)
 		}
+
+		// Update cache
+		s.urlMtx.Lock()
+		if _, found := s.urlCache[shortURL]; found {
+			s.urlCache[shortURL].Disabled = disable
+		}
+		s.urlMtx.Unlock()
 	}
 
 	return c.Status(codeOk).JSON(newAPIResponse(true, codeOk, "Short URL has been updated"))
@@ -247,7 +286,7 @@ func (s *WebServer) handleGetShortURLClicks(c *fiber.Ctx) error {
 		*APIResponse
 		Data []*db.ShortURLClick `json:"data"`
 	}{
-		APIResponse: newAPIResponse(true, codeOk, "Short ULR clicks retrieved"),
+		APIResponse: newAPIResponse(true, codeOk, "Short URL clicks retrieved"),
 		Data:        clicks,
 	}
 

@@ -10,7 +10,7 @@ RUN go build -o /usr/local/bin/bob
 
 ENV DEV_MODE=true
 ENV MONGODB_DB_NAME=bob
-ENV MONGODB_CONNECTION_URL="mongodb+srv://ukanephilemon:6CutPFJYbKZkhbYz@bob-cluster.whslg4g.mongodb.net/?retryWrites=true&w=majority"
+ENV MONGODB_CONNECTION_URL=""
 ENV HOST=0.0.0.0
 ENV PORT=8080
 

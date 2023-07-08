@@ -1,5 +1,12 @@
 package db
 
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"net/mail"
+	"strings"
+)
+
 const (
 	// URLLength is the length of the shortened URL.
 	URLLength = 6
@@ -15,10 +22,10 @@ type DataStore interface {
 	// and email must be unique. The password is hashed before being stored.
 	CreateUser(username, email string, password []byte) error
 	// RetrieveUserInfo fetches information about a user using the email.
-	RetrieveUserInfo(email string) (*User, error)
+	RetrieveUserInfo(email string) (*UserInfo, error)
 	// LoginUser logs a user in and returns a nil error if the user exists and the
 	// password is correct.
-	LoginUser(email string, password []byte) (*User, error)
+	LoginUser(email string, password []byte) (*UserInfo, error)
 	// CreateNewShortURL adds a new URL to the database and returns the
 	// shortened URL. userID will can be any unique identifier for a guest user
 	// but it is an email for non-guest users.
@@ -40,12 +47,12 @@ type DataStore interface {
 	Close() error
 }
 
-// User represents a user in the database.
-type User struct {
+// UserInfo represents a user in the database.
+type UserInfo struct {
 	Username   string `json:"username" bson:"username"`
 	Email      string `json:"email" bson:"email"`
-	TotalLinks int    `json:"totalLinks" bson:"total_links"`
 	Timestamp  int64  `json:"timestamp" bson:"timestamp"`
+	TotalLinks int    `json:"totalLinks" bson:"total_links"`
 }
 
 // ShortURLInfo represents a short URL in the database.
@@ -53,9 +60,9 @@ type ShortURLInfo struct {
 	OwnerID     string `json:"ownerID" bson:"owner_id"`
 	ShortURL    string `json:"shortUrl" bson:"short_url"`
 	OriginalURL string `json:"originalUrl" bson:"original_url"`
+	Timestamp   int64  `json:"timestamp" bson:"timestamp"`
 	Clicks      int32  `json:"clicks" bson:"clicks"`
 	Disabled    bool   `json:"disabled" bson:"disabled"`
-	Timestamp   int64  `json:"timestamp" bson:"timestamp"`
 }
 
 // ShortURLClick is information about a click on a short URL.
@@ -65,4 +72,22 @@ type ShortURLClick struct {
 	Device     string `json:"device" bson:"device"`
 	DeviceType string `json:"deviceType" bson:"device_type"`
 	Timestamp  int64  `json:"timestamp" bson:"timestamp"`
+}
+
+// IsValidEmail checks if the given email is valid.
+func IsValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil && strings.Contains(strings.SplitAfter(email, "@")[1], ".")
+}
+
+// RandomString generates and returns a random string of x2 the specified
+// length.
+func RandomString(len int) (string, error) {
+	b := make([]byte, len)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(b), nil
 }

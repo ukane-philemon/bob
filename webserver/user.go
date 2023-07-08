@@ -17,14 +17,15 @@ const (
 
 // handleUsernameExists handles the "GET /api/username-exists?username="name""
 // endpoint and checks if a username exists.
-func (r *WebServer) handleUsernameExists(c *fiber.Ctx) error {
+func (s *WebServer) handleUsernameExists(c *fiber.Ctx) error {
 	username := c.Query("username")
 	if username == "" || len(username) < minUsernameChar {
 		return errBadRequest(fmt.Sprintf("username with at least %d characters is required", minUsernameChar))
 	}
 
-	exists, err := r.db.UsernameExists(username)
+	exists, err := s.db.UsernameExists(username)
 	if err != nil {
+		appLog.Printf("\nerror checking if username exists: %v\n", err)
 		return errInternal(err)
 	}
 
@@ -38,7 +39,7 @@ func (r *WebServer) handleUsernameExists(c *fiber.Ctx) error {
 
 // handleCreateAccount handles the "POST /api/user" endpoint and creates a new
 // user account.
-func (r *WebServer) handleCreateAccount(c *fiber.Ctx) error {
+func (s *WebServer) handleCreateAccount(c *fiber.Ctx) error {
 	form := new(createAccountRequest)
 	if err := c.BodyParser(form); err != nil {
 		return errBadRequest("invalid request body")
@@ -58,7 +59,7 @@ func (r *WebServer) handleCreateAccount(c *fiber.Ctx) error {
 	}
 	defer password.Zero()
 
-	if err := r.db.CreateUser(form.Username, form.Email, password.Bytes()); err != nil {
+	if err := s.db.CreateUser(form.Username, form.Email, password.Bytes()); err != nil {
 		if errors.Is(err, db.ErrorBadRequest) {
 			return errBadRequest(err.Error())
 		}
@@ -72,13 +73,13 @@ func (r *WebServer) handleCreateAccount(c *fiber.Ctx) error {
 
 // handleGetUser handles the "GET /api/user" endpoint and retrieves a user
 // information.
-func (r *WebServer) handleGetUser(c *fiber.Ctx) error {
+func (s *WebServer) handleGetUser(c *fiber.Ctx) error {
 	email, ok := c.Context().UserValue(ctxID).(string)
 	if !ok {
 		return errUnauthorized("you are not unauthorized to access this resource")
 	}
 
-	user, err := r.db.RetrieveUserInfo(email)
+	user, err := s.db.RetrieveUserInfo(email)
 	if err != nil {
 		return errInternal(err)
 	}
@@ -93,7 +94,7 @@ func (r *WebServer) handleGetUser(c *fiber.Ctx) error {
 
 // handleLogin handles the "POST /api/login" endpoint, verifies the provided
 // auth credentials and generates an auth token for the user.
-func (r *WebServer) handleLogin(c *fiber.Ctx) error {
+func (s *WebServer) handleLogin(c *fiber.Ctx) error {
 	form := new(loginRequest)
 	if err := c.BodyParser(form); err != nil {
 		return errBadRequest("invalid request body")
@@ -109,16 +110,19 @@ func (r *WebServer) handleLogin(c *fiber.Ctx) error {
 	}
 	defer password.Zero()
 
-	user, err := r.db.LoginUser(form.Email, password.Bytes())
+	user, err := s.db.LoginUser(form.Email, password.Bytes())
 	if err != nil {
 		if errors.Is(err, db.ErrorBadRequest) {
 			return errBadRequest(err.Error())
 		}
+
+		appLog.Printf("\nerror logging in user: %v\n", err)
 		return errInternal(err)
 	}
 
-	authToken, err := r.authenticator.generateAuthToken(user.Email, user.Username, jwtAudienceUser, tokenExpiry)
+	authToken, err := s.authenticator.generateAuthToken(user.Email, user.Username, jwtAudienceUser, tokenExpiry)
 	if err != nil {
+		appLog.Printf("\nerror generating auth token: %v\n", err)
 		return errInternal(err)
 	}
 

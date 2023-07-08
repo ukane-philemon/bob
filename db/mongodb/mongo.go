@@ -23,6 +23,24 @@ const (
 	usersCollectionName = "users"
 )
 
+const (
+	// shortURLKey is the key for the short URL in the database. See:
+	// db.ShortURLInfo.ShortURL.
+	shortURLKey = "short_url"
+	// ownerIDKey is the key for the owner ID in the database. See:
+	// db.ShortURLInfo.OwnerID.
+	ownerIDKey = "owner_id"
+	// emailKey is the key for the user email in the database. See:
+	// db.UserInfo.Email.
+	emailKey = "email"
+	// originalURLKey is the key for the original URL in the database. See:
+	// db.ShortURLInfo.OriginalURL.
+	originalURLKey = "original_url"
+	// usernameKey is the key for the username in the database. See:
+	// db.UserInfo.Username.
+	usernameKey = "username"
+)
+
 type Config struct {
 	// DBName is the name of the database.
 	DBName string `long:"dbname" env:"MONGODB_DB_NAME" default:"bob" description:"MongoDB database name"`
@@ -63,7 +81,7 @@ func Connect(ctx context.Context, cfg Config) (*MongoDB, error) {
 
 	// Create indexes.
 	model := mongo.IndexModel{
-		Keys:    bson.D{{Key: "short_url", Value: 1}},
+		Keys:    bson.D{{Key: urlMapKey(shortURLKey), Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
 
@@ -72,7 +90,7 @@ func Connect(ctx context.Context, cfg Config) (*MongoDB, error) {
 	}
 
 	model = mongo.IndexModel{
-		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}},
+		Keys:    bson.D{{Key: userMapKey(usernameKey), Value: 1}, {Key: userMapKey(emailKey), Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
 

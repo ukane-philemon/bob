@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/ukane-philemon/bob/db"
+	"github.com/ukane-philemon/bob/db/mem"
 	"github.com/ukane-philemon/bob/db/mongodb"
 	"github.com/ukane-philemon/bob/webserver"
 )
@@ -44,13 +46,18 @@ func main() {
 		exitWithErr(err)
 	}
 
-	if cfg.MongoDBCfg.ConnectionURL == "" {
+	if cfg.MongoDBCfg.ConnectionURL == "" && !cfg.DevMode {
 		exitWithErr(fmt.Errorf("MongoDB connection URL is required"))
 	}
 
-	db, err := mongodb.Connect(ctx, cfg.MongoDBCfg)
-	if err != nil {
-		exitWithErr(err)
+	var db db.DataStore
+	if cfg.MongoDBCfg.ConnectionURL != "" {
+		db, err = mongodb.Connect(ctx, cfg.MongoDBCfg)
+		if err != nil {
+			exitWithErr(err)
+		}
+	} else {
+		db = mem.New()
 	}
 	defer db.Close()
 

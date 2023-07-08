@@ -21,7 +21,6 @@ Some of the things we plan to add to B.O.B in the future include:
 
 - A web interface
 - Expiration dates for short links
-- A browser extension
 - A mobile app
 - Several social media bots that will support multiple platforms
 - Premium features
@@ -52,13 +51,18 @@ B.O.B can be configured using environment variables. The following environment v
 - `HOST`: The host to run B.O.B on. Defaults to `127.0.0.1`
 - `PORT`: The port to run B.O.B on. Defaults to `8080`.
 - `MONGODB_CONNECTION_URL`: The connection URL of the mongodb database to use. Required.
+- `DEV_MODE`: Set to true if you want to run without a mongodb connection URL.
+  B.O.B will use an in-memory db.
+
+You can also use cli flags to provide configuration values. For example, `./bob
+--dev` will start B.O.B in development mode.
 
 If starting B.O.B using docker, set the `environments` values with your own
 configuration or run it as it is.
 
-Feel free to use my mongodb for dev testing or test running the project because
-I disabled dev mode (Need a file based implementation but just TODO for now):
-`mongodb+srv://ukanephilemon:6CutPFJYbKZkhbYz@bob-cluster.whslg4g.mongodb.net/?retryWrites=true&w=majority`.
+**NOTE**: `MemDB` is not as restrictive and robust as the `MongoDB`
+implementation. If you encounter any issues using it in dev mode, please create
+a new issue.
 
 ## API
 B.O.B has an API which can be used to interact with it. The API is documented in our [OpenAPI spec](./api.yaml).
@@ -66,6 +70,14 @@ B.O.B has an API which can be used to interact with it. The API is documented in
 ## Contributing
 Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUTING.md) for more information.
 
+## API Testing
+To test the API, you can upload the [OpenAPI Specs](./api.yaml) we have provided to any API Testing Platform like Postman.
+
+Or without leaving VSCode, you can use the [Thunder
+Client](https://marketplace.visualstudio.com/items?itemName=rangav.vscode-thunder-client)
+extension to test the API. Click on the `Collections` tab on the left sidebar
+and click on the `Import` button. Then select the `api.yaml` file. That's it!
+You can now test the API.
 
 ## Donations
 If you like B.O.B and want to support its development, you can donate to us using the following methods:
@@ -74,3 +86,13 @@ If you like B.O.B and want to support its development, you can donate to us usin
 
 ## License
 B.O.B is licensed under the [MIT License](./LICENSE).
+
+## Credits
+B.O.B is developed and maintained by [Philemon Ukane](github.com/ukane-philemon). It is inspired by [bit.ly](https://bit.ly) and [tinyurl.com](https://tinyurl.com). It is built using [Go](https://golang.org) and [MongoDB](https://mongodb.com). It is hosted on [Render](https://render.com) (for free!).
+
+## Contact
+You can contact me via email at [ukanephilemon@gmail.com](mailto:ukanephilemon@gmail.com) or on [Twitter](https://twitter.com/behindtextdev).
+
+PS: I not always available on Twitter, so email is the best way to reach me.
+PSS: I was unable to put in much time into this project, so it's not as good as I would have liked it to be. I hope to improve it in the future.
+

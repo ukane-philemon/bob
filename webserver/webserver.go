@@ -4,20 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	glog "log"
+	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/ukane-philemon/bob/db"
 )
 
 // AppName is the name of the application.
 const AppName = "B.O.B"
 
-var appLog = glog.New(os.Stdout, "[webserver] ", glog.LstdFlags|glog.Lshortfile)
+var appLog = log.New(os.Stdout, "[webserver] ", log.LstdFlags|log.Lshortfile)
 
 // Config is the configuration for the web server.
 type Config struct {
@@ -33,10 +35,15 @@ type WebServer struct {
 
 	db            db.DataStore
 	authenticator *jwtAuthenticator
+
+	urlMtx sync.RWMutex
+	// urlCache holds information about recently shortened URLs to improve read
+	// time.
+	urlCache map[string]*db.ShortURLInfo
 }
 
 // New creates a new WebServer.
-func New(ctx context.Context, cfg Config, db db.DataStore) (*WebServer, error) {
+func New(ctx context.Context, cfg Config, appDB db.DataStore) (*WebServer, error) {
 	if cfg.Host == "" || cfg.Port == "" {
 		return nil, errors.New("invalid host or port")
 	}
@@ -51,6 +58,7 @@ func New(ctx context.Context, cfg Config, db db.DataStore) (*WebServer, error) {
 		//StrictRouting:    true,
 	})
 
+	a.Use(logger.New())
 	a.Use(cors.New())
 	a.Use(limiter.New(limiter.Config{
 		Max:                1000,
@@ -66,8 +74,9 @@ func New(ctx context.Context, cfg Config, db db.DataStore) (*WebServer, error) {
 		addr:          cfg.Host + ":" + cfg.Port,
 		ctx:           ctx,
 		App:           a,
-		db:            db,
+		db:            appDB,
 		authenticator: authenticator,
+		urlCache:      make(map[string]*db.ShortURLInfo, 100000), // 93bytes * 100,000 = 20MB
 	}
 
 	registerRoutes(s)

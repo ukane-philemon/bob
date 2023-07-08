@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/ukane-philemon/bob/db"
+	"github.com/ukane-philemon/bob/db/mem"
 )
 
 var dummyUserPassword = "password"
@@ -27,7 +29,7 @@ func TestWebServer_handleUsernameExists(t *testing.T) {
 		username: "fi",
 	}, {
 		name:     "valid username does not exist",
-		username: "fibrealz",
+		username: "fibrealzz",
 	}, {
 		name:     "server error",
 		username: "fibrealz",
@@ -35,9 +37,14 @@ func TestWebServer_handleUsernameExists(t *testing.T) {
 	}}
 
 	for _, tt := range tests {
-		tdb := s.db.(*tDB)
-		tdb.usernameExists = tt.wantExists
-		tdb.err = tt.dbErr
+		tdb := s.db.(*mem.MemDB)
+		tdb.SetError(tt.dbErr)
+		if tt.wantExists {
+			randStr, _ := db.RandomString(5)
+			if err := tdb.CreateUser(tt.username, randStr+"test@mail.com", []byte(dummyUserPassword)); err != nil {
+				t.Fatalf("%s: tdb.CreateUser error: %s", tt.name, err)
+			}
+		}
 
 		var resp *usernameExitsResponse
 		err := s.sendRequest(fiber.MethodGet, fmt.Sprintf("api/username-exists?username=%s", tt.username), nil, &resp, nil)
@@ -112,8 +119,8 @@ func TestWebServer_handleCreateAccount(t *testing.T) {
 	}}
 
 	for _, tt := range tests {
-		tdb := s.db.(*tDB)
-		tdb.err = tt.dbErr
+		tdb := s.db.(*mem.MemDB)
+		tdb.SetError(tt.dbErr)
 
 		var resp *APIResponse
 		err := s.sendRequest(fiber.MethodPost, "api/user", tt.req, &resp, nil)
@@ -177,8 +184,15 @@ func TestWebServer_handleGetUser(t *testing.T) {
 	}}
 
 	for _, tt := range tests {
-		tdb := s.db.(*tDB)
-		tdb.err = tt.dbErr
+		tdb := s.db.(*mem.MemDB)
+		tdb.SetError(tt.dbErr)
+
+		if tt.dbErr == nil && !tt.wantUnAuthorized {
+			// Create a user to be fetched for success case.
+			if err := s.db.CreateUser(userUsername, userEmail, []byte(dummyUserPassword)); err != nil {
+				t.Fatalf("%s: s.db.CreateUser error: %s", tt.name, err)
+			}
+		}
 
 		headers := map[string]string{
 			fiber.HeaderAuthorization: fmt.Sprintf("Bearer %s", tt.apiKey),
@@ -205,7 +219,7 @@ func TestWebServer_handleGetUser(t *testing.T) {
 			t.Fatalf("%s: Expected server error got %v", tt.name, resp.Code)
 		}
 
-		if (resp.Ok && resp.Data == nil) || (resp.Ok && tdb.dummyUser.Email != resp.Data.Email) {
+		if (resp.Ok && resp.Data == nil) || (resp.Ok && userEmail != resp.Data.Email) {
 			t.Fatalf("%s: Expected matching user info", tt.name)
 		}
 	}
@@ -215,6 +229,7 @@ func TestWebServer_handleLogin(t *testing.T) {
 	s := newTServer(t)
 	defer s.Stop()
 
+	validEmail := "test@email.com"
 	tests := []struct {
 		name          string
 		req           loginRequest
@@ -223,7 +238,7 @@ func TestWebServer_handleLogin(t *testing.T) {
 	}{{
 		name: "success",
 		req: loginRequest{
-			Email:    "test@email.com",
+			Email:    validEmail,
 			Password: dummyUserPassword,
 		},
 		messagePrefix: "Login Successful",
@@ -257,8 +272,15 @@ func TestWebServer_handleLogin(t *testing.T) {
 		dbErr:         dummyError,
 	}}
 	for _, tt := range tests {
-		tdb := s.db.(*tDB)
-		tdb.err = tt.dbErr
+		tdb := s.db.(*mem.MemDB)
+		tdb.SetError(tt.dbErr)
+
+		if tt.dbErr == nil && tt.req.Email == validEmail && tt.req.Password == dummyUserPassword {
+			// Create a user to login.
+			if err := tdb.CreateUser("fibrealz", validEmail, []byte(dummyUserPassword)); err != nil {
+				t.Fatalf("%s: tdb.CreateUser error: %s", tt.name, err)
+			}
+		}
 
 		var resp *loginResponse
 		if err := s.sendRequest(fiber.MethodPost, "api/login", tt.req, &resp, nil); err != nil {
@@ -273,7 +295,7 @@ func TestWebServer_handleLogin(t *testing.T) {
 			t.Fatalf("%s: Expected server error got %v", tt.name, resp.Code)
 		}
 
-		if (resp.Ok && resp.Data == nil) || (resp.Ok && tdb.dummyUser.Email != resp.Data.Email) {
+		if (resp.Ok && resp.Data == nil) || (resp.Ok && validEmail != resp.Data.Email) {
 			t.Fatalf("%s: Expected matching user info", tt.name)
 		}
 
