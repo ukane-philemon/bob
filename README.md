@@ -70,7 +70,7 @@ a new issue.
 B.O.B has an API which can be used to interact with it. The API is documented in our [OpenAPI spec](./api.yaml).
 
 ## Contributing
-Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUTING.md) for more information.
+Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUTION.md) for more information.
 
 ## API Testing
 To test the API, you can upload the [OpenAPI Specs](./api.yaml) we have provided to any API Testing Platform like Postman.
